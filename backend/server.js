@@ -9,7 +9,14 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    "https://yourapp.railway.app",
+    "http://localhost:3000",
+    "exp://your-expo-app"
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 const PORT = process.env.PORT || 5000;

@@ -3,10 +3,12 @@ import Config from '../config/environment'; // ← Add this import
 
 const WebSocketContext = createContext(null);
 
-// Use the config instead of hardcoded values
-const BACKEND_URL = 'http://172.16.6.175:5000';
-const WS_URL = BACKEND_URL.replace('http', 'ws');
+// Use environment-aware URLs
+const BACKEND_URL = __DEV__ 
+  ? 'http://172.16.6.175:5000'  // Development
+  : 'https://railway.com/project/6cfcd4a9-5d52-479f-aa33-b7c70dd27999?environmentId=3f9064d0-0ffc-4d13-9072-7836cbb0ff86'; // Production
 
+const WS_URL = BACKEND_URL.replace('http', 'ws');
 export const WebSocketProvider = ({ children }) => {
   const [vehicles, setVehicles] = useState([]);
   const [hazards, setHazards] = useState([]);
