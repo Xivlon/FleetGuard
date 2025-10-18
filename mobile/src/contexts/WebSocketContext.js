@@ -1,11 +1,23 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
-import Config from '../config/environment'; // ← Add this import
+import Config from '../config/environment';
 
 const WebSocketContext = createContext(null);
 
 // Use environment-aware URLs
-const BACKEND_URL = 'https://fleetguard.onrender.com';
-const WS_URL = BACKEND_URL.replace('https', 'wss');
+const BACKEND_URL = Config.BACKEND_URL;
+
+const toWebSocketUrl = (url) => {
+  if (!url) {
+    return null;
+  }
+  if (url.startsWith('https://')) {
+    return url.replace('https://', 'wss://');
+  }
+  if (url.startsWith('http://')) {
+    return url.replace('http://', 'ws://');
+  }
+  return url;
+};
 
 export const WebSocketProvider = ({ children }) => {
   const [vehicles, setVehicles] = useState([]);
@@ -13,16 +25,27 @@ export const WebSocketProvider = ({ children }) => {
   const [routes, setRoutes] = useState({});
   const [connected, setConnected] = useState(false);
   const [routeAlerts, setRouteAlerts] = useState([]);
-  const [backendUrl, setBackendUrl] = useState(BACKEND_URL); // ← Add state for dynamic URL
+  const [backendUrl, setBackendUrl] = useState(BACKEND_URL);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
 
   const connect = () => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
     try {
-      const ws = new WebSocket(WS_URL);
+  const wsUrl = toWebSocketUrl(backendUrl);
+      if (!wsUrl) {
+        console.warn('WebSocket URL unavailable; skipping connection attempt');
+        return;
+      }
+
+      const ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
-        console.log('WebSocket connected to:', WS_URL);
+  console.log('WebSocket connected to:', wsUrl);
         setConnected(true);
       };
 
@@ -89,12 +112,12 @@ export const WebSocketProvider = ({ children }) => {
       };
 
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        console.log('Attempted URL:', WS_URL);
+  console.error('WebSocket error:', error);
+  console.log('Attempted URL:', wsUrl);
       };
 
       ws.onclose = () => {
-        console.log('WebSocket disconnected from:', WS_URL);
+  console.log('WebSocket disconnected from:', wsUrl);
         setConnected(false);
         
         reconnectTimeoutRef.current = setTimeout(() => {
@@ -120,7 +143,7 @@ export const WebSocketProvider = ({ children }) => {
         wsRef.current.close();
       }
     };
-  }, []);
+  }, [backendUrl]);
 
   const updateVehicleLocation = (vehicleId, location, heading, speed) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -163,7 +186,8 @@ export const WebSocketProvider = ({ children }) => {
       connected,
       updateVehicleLocation,
       recalculateRoute,
-      backendUrl: backendUrl // ← Use the state variable
+      backendUrl,
+      setBackendUrl
     }}>
       {children}
     </WebSocketContext.Provider>
