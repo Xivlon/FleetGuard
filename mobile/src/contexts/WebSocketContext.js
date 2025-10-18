@@ -7,16 +7,14 @@ const WebSocketContext = createContext(null);
 const BACKEND_URL = Config.BACKEND_URL;
 
 const toWebSocketUrl = (url) => {
-  if (!url) {
-    return null;
+  if (!url) return null;
+  let base = url;
+  if (!/^https?:\/\//i.test(base)) {
+    base = `https://${base}`;
   }
-  if (url.startsWith('https://')) {
-    return url.replace('https://', 'wss://');
-  }
-  if (url.startsWith('http://')) {
-    return url.replace('http://', 'ws://');
-  }
-  return url;
+  base = base.replace(/^https:\/\//i, 'wss://').replace(/^http:\/\//i, 'ws://');
+  base = base.replace(/\/+$/, '');
+  return `${base}/ws`;
 };
 
 export const WebSocketProvider = ({ children }) => {
@@ -42,6 +40,7 @@ export const WebSocketProvider = ({ children }) => {
         return;
       }
 
+      console.log('Connecting to WebSocket URL:', wsUrl);
       const ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
