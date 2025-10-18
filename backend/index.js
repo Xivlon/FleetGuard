@@ -207,16 +207,37 @@ app.post('/api/routes/calculate', async (req, res) => {
           }
         });
         routeData = response.data;
-        console.log('✅ GraphHopper API Success - Using real routing');
+        console.log('GraphHopper API Success - Using real routing');
+        console.log('Route points received:', routeData.paths?.[0]?.points?.coordinates?.length || 0);
+        
+        // Debug: log first few coordinates
+        if (routeData.paths?.[0]?.points?.coordinates) {
+          console.log('First 3 coordinates from GraphHopper:', 
+            routeData.paths[0].points.coordinates.slice(0, 3));
+        }
       } catch (apiError) {
-        console.log('❌ GraphHopper API failed, using fallback:', apiError.message);
+        console.log('GraphHopper API failed, using fallback:', apiError.message);
         routeData = generateFallbackRoute(start, end);
         usingFallback = true;
       }
     } else {
-      console.log('❌ No API key, using fallback');
+      console.log('No API key, using fallback');
       routeData = generateFallbackRoute(start, end);
       usingFallback = true;
+    }
+
+    // Process coordinates - GraphHopper returns [lng, lat], convert to {latitude, longitude} objects
+    let coordinates = [];
+    if (routeData.paths?.[0]?.points?.coordinates && !usingFallback) {
+      // Convert from [lng, lat] arrays to {latitude, longitude} objects for frontend
+      coordinates = routeData.paths[0].points.coordinates.map(coord => ({
+        latitude: coord[1],
+        longitude: coord[0]
+      }));
+      console.log('Processed coordinates for map:', coordinates.length);
+    } else {
+      // Fallback coordinates
+      coordinates = generateStraightLine(start, end);
     }
 
     const route = {
@@ -225,13 +246,19 @@ app.post('/api/routes/calculate', async (req, res) => {
       end,
       distance: routeData.paths?.[0]?.distance,
       duration: routeData.paths?.[0]?.time,
-      coordinates: routeData.paths?.[0]?.points?.coordinates,
+      coordinates: coordinates,
       instructions: routeData.paths?.[0]?.instructions,
       timestamp: new Date().toISOString(),
       fallback: usingFallback
     };
 
-    console.log('Route fallback status:', route.fallback);
+    console.log('Route details:', {
+      fallback: route.fallback,
+      coordinateCount: route.coordinates.length,
+      hasInstructions: !!route.instructions,
+      distance: route.distance,
+      duration: route.duration
+    });
 
     if (vehicleId) {
       activeRoutes.set(vehicleId, route);
@@ -246,16 +273,15 @@ app.post('/api/routes/calculate', async (req, res) => {
     console.error('Route calculation error:', error.message);
     
     const { start, end, vehicleId } = req.body;
-    const fallbackRoute = generateFallbackRoute(start, end);
     
     const route = {
       vehicleId: vehicleId || null,
       start,
       end,
-      distance: fallbackRoute.paths[0].distance,
-      duration: fallbackRoute.paths[0].time,
-      coordinates: fallbackRoute.paths[0].points.coordinates,
-      instructions: fallbackRoute.paths[0].instructions,
+      distance: calculateDistance(start, end),
+      duration: estimateDuration(start, end),
+      coordinates: generateStraightLine(start, end),
+      instructions: generateBasicInstructions(start, end),
       timestamp: new Date().toISOString(),
       fallback: true
     };
@@ -274,7 +300,7 @@ function generateFallbackRoute(start, end) {
       distance: calculateDistance(start, end),
       time: estimateDuration(start, end),
       points: {
-        coordinates: generateStraightLine(start, end)
+        coordinates: generateStraightLine(start, end).map(coord => [coord.longitude, coord.latitude])
       },
       instructions: generateBasicInstructions(start, end)
     }]
@@ -303,15 +329,15 @@ function estimateDuration(start, end) {
 }
 
 function generateStraightLine(start, end) {
-  const steps = 10;
+  const steps = 50; // Increased for smoother line
   const coordinates = [];
   
   for (let i = 0; i <= steps; i++) {
     const fraction = i / steps;
-    coordinates.push([
-      start.longitude + (end.longitude - start.longitude) * fraction,
-      start.latitude + (end.latitude - start.latitude) * fraction
-    ]);
+    coordinates.push({
+      latitude: start.latitude + (end.latitude - start.latitude) * fraction,
+      longitude: start.longitude + (end.longitude - start.longitude) * fraction
+    });
   }
   
   return coordinates;
@@ -366,7 +392,7 @@ async function checkRoutesForHazards(newHazard) {
   activeRoutes.forEach(async (route, vehicleId) => {
     if (route.coordinates) {
       for (const coord of route.coordinates) {
-        const point = { latitude: coord[1], longitude: coord[0] };
+        const point = { latitude: coord.latitude, longitude: coord.longitude };
         const distance = calculateDistance(point, newHazard.location);
         
         if (distance <= HAZARD_PROXIMITY_METERS) {
@@ -428,13 +454,24 @@ async function recalculateRouteForVehicle(vehicleId, start, end) {
       usingFallback = true;
     }
 
+    // Process coordinates - GraphHopper returns [lng, lat], convert to {latitude, longitude} objects
+    let coordinates = [];
+    if (routeData.paths?.[0]?.points?.coordinates && !usingFallback) {
+      coordinates = routeData.paths[0].points.coordinates.map(coord => ({
+        latitude: coord[1],
+        longitude: coord[0]
+      }));
+    } else {
+      coordinates = generateStraightLine(start, end);
+    }
+
     const route = {
       vehicleId,
       start,
       end,
       distance: routeData.paths?.[0]?.distance || calculateDistance(start, end),
       duration: routeData.paths?.[0]?.time || estimateDuration(start, end),
-      coordinates: routeData.paths?.[0]?.points?.coordinates || generateStraightLine(start, end),
+      coordinates: coordinates,
       instructions: routeData.paths?.[0]?.instructions || generateBasicInstructions(start, end),
       timestamp: new Date().toISOString(),
       recalculated: true,
