@@ -2,7 +2,7 @@
 // Use the hosted backend for both development and production so Expo (dev) can connect.
 // If you need to use a local backend instead, edit the DEVELOPMENT_BACKEND_URL constant below.
 
-const DEVELOPMENT_BACKEND_URL = 'http://172.16.6.175:5000';
+const DEVELOPMENT_BACKEND_URL = 'https://fleetguard.onrender.com';
 const PRODUCTION_BACKEND_URL = 'https://fleetguard.onrender.com';
 
 const ENV = {
