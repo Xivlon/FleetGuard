@@ -188,7 +188,7 @@ app.post('/api/routes/calculate', async (req, res) => {
 
     const graphHopperUrl = 'https://graphhopper.com/api/1/route';
      const apiKey = process.env.GRAPHHOPPER_API_KEY;
-
+      console.log('GraphHopper API Key configured:', !!apiKey);
     let routeData;
     
     if (apiKey) {
