@@ -1,9 +1,12 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const WebSocket = require('ws');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
+
+const GRAPH_HOPPER_URL = 'https://graphhopper.com/api/1/route';
 
 const app = express();
 const server = http.createServer(app);
@@ -78,6 +81,8 @@ wss.on('connection', (ws) => {
     console.log('Client disconnected');
   });
 });
+
+console.log('GraphHopper API Key configured:', !!process.env.GRAPHHOPPER_API_KEY);
 
 app.get('/api/hazards', (req, res) => {
   const { severity, timeFilter } = req.query;
@@ -186,7 +191,6 @@ app.post('/api/routes/calculate', async (req, res) => {
       return res.status(400).json({ error: 'Invalid start or end coordinates' });
     }
 
-    const graphHopperUrl = 'https://graphhopper.com/api/1/route';
     const apiKey = process.env.GRAPHHOPPER_API_KEY;
     
     console.log('GraphHopper API Key configured:', !!apiKey);
@@ -196,7 +200,7 @@ app.post('/api/routes/calculate', async (req, res) => {
     
     if (apiKey) {
       try {
-        const response = await axios.get(graphHopperUrl, {
+        const response = await axios.get(GRAPH_HOPPER_URL, {
           params: {
             point: [`${start.latitude},${start.longitude}`, `${end.latitude},${end.longitude}`],
             vehicle: 'car',
@@ -429,8 +433,7 @@ async function recalculateRouteForVehicle(vehicleId, start, end) {
   try {
     if (apiKey) {
       try {
-        const graphHopperUrl = 'https://graphhopper.com/api/1/route';
-        const response = await axios.get(graphHopperUrl, {
+        const response = await axios.get(GRAPH_HOPPER_URL, {
           params: {
             point: [`${start.latitude},${start.longitude}`, `${end.latitude},${end.longitude}`],
             vehicle: 'car',
@@ -527,6 +530,35 @@ app.get('/api/health', (req, res) => {
     routes: activeRoutes.size,
     timestamp: new Date().toISOString()
   });
+});
+
+app.get('/api/routing-status', async (req, res) => {
+  const configured = !!process.env.GRAPHHOPPER_API_KEY;
+  if (!configured) {
+    return res.json({ configured: false, provider: 'graphhopper', reachable: false, message: 'No GRAPHHOPPER_API_KEY configured' });
+  }
+
+  try {
+    // lightweight test: calculate a tiny route between two close points
+    const sampleStart = { latitude: 37.7749, longitude: -122.4194 };
+    const sampleEnd = { latitude: 37.7849, longitude: -122.4094 };
+
+    const response = await axios.get(GRAPH_HOPPER_URL, {
+      params: {
+        point: [`${sampleStart.latitude},${sampleStart.longitude}`, `${sampleEnd.latitude},${sampleEnd.longitude}`],
+        vehicle: 'car',
+        points_encoded: false,
+        key: process.env.GRAPHHOPPER_API_KEY,
+        instructions: false
+      },
+      timeout: 5000
+    });
+
+    const pointCount = response.data.paths?.[0]?.points?.coordinates?.length || 0;
+    return res.json({ configured: true, provider: 'graphhopper', reachable: true, points: pointCount });
+  } catch (error) {
+    return res.json({ configured: true, provider: 'graphhopper', reachable: false, error: error.message });
+  }
 });
 
 server.listen(PORT, '0.0.0.0', () => {
