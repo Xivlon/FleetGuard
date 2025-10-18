@@ -187,7 +187,7 @@ app.post('/api/routes/calculate', async (req, res) => {
     }
 
     const graphHopperUrl = 'https://graphhopper.com/api/1/route';
-     const apiKey = process.env.GRAPHHOPPER_API_KEY;
+     const apiKey = process.env.GRAPHHOPPER_API_KEY || '71099fbd-8aa6-461e-94e1-aac795e457de';
       console.log('GraphHopper API Key configured:', !!apiKey);
       console.log('API Key value:', process.env.GRAPHHOPPER_API_KEY); 
       console.log('All environment variables:', Object.keys(process.env));
