@@ -4,10 +4,8 @@ import Config from '../config/environment'; // ← Add this import
 const WebSocketContext = createContext(null);
 
 // Use environment-aware URLs
-const BACKEND_URL = __DEV__ 
-  ? 'http://172.16.6.175:5000'  // Local development
-  : 'https://fleetguard.onrender.com'; // ← YOUR RENDER URL!
-const WS_URL = BACKEND_URL.replace('http', 'ws');
+const BACKEND_URL = 'https://fleetguard.onrender.com';
+const WS_URL = BACKEND_URL.replace('https', 'wss');
 
 export const WebSocketProvider = ({ children }) => {
   const [vehicles, setVehicles] = useState([]);
