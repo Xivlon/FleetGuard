@@ -1,18 +1,27 @@
 // src/config/environment.js
+// Use the hosted backend for both development and production so Expo (dev) can connect.
+// If you need to use a local backend instead, edit the DEVELOPMENT_BACKEND_URL constant below.
 
-// Replace YOUR_LOCAL_IP with your computer's actual local IP address
-// Examples: '192.168.1.100', '10.0.0.5', etc.
+const DEVELOPMENT_BACKEND_URL = 'https://fleetguard.onrender.com';
+const PRODUCTION_BACKEND_URL = 'https://fleetguard.onrender.com';
 
 const ENV = {
+  development: {
+    BACKEND_URL: DEVELOPMENT_BACKEND_URL,
+  },
   production: {
-    BACKEND_URL: 'https://fleetguard.onrender.com',
-  }
+    BACKEND_URL: PRODUCTION_BACKEND_URL,
+  },
 };
 
 const getEnvVars = (env = null) => {
-  if (__DEV__) {
+  if (env === 'production') {
+    return ENV.production;
+  }
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
     return ENV.development;
   }
+  // default to production to ensure a valid BACKEND_URL in all environments
   return ENV.production;
 };
 
