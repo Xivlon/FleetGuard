@@ -11,10 +11,10 @@ const wss = new WebSocket.Server({ server });
 
 app.use(cors({
   origin: [
-    "https://fleetguard.onrender.com",  // Production
-    "http://localhost:3000",            // Local development
-    "exp://your-expo-app",              // Expo development
-    "http://172.16.6.175:5000"          // Your local network
+    "https://fleetguard.onrender.com",
+    "http://localhost:3000",
+    "exp://your-expo-app",
+    "http://172.16.6.175:5000"
   ],
   credentials: true
 }));
@@ -209,12 +209,6 @@ app.post('/api/routes/calculate', async (req, res) => {
         routeData = response.data;
         console.log('GraphHopper API Success - Using real routing');
         console.log('Route points received:', routeData.paths?.[0]?.points?.coordinates?.length || 0);
-        
-        // Debug: log first few coordinates
-        if (routeData.paths?.[0]?.points?.coordinates) {
-          console.log('First 3 coordinates from GraphHopper:', 
-            routeData.paths[0].points.coordinates.slice(0, 3));
-        }
       } catch (apiError) {
         console.log('GraphHopper API failed, using fallback:', apiError.message);
         routeData = generateFallbackRoute(start, end);
@@ -226,17 +220,17 @@ app.post('/api/routes/calculate', async (req, res) => {
       usingFallback = true;
     }
 
-    // Process coordinates - GraphHopper returns [lng, lat], convert to {latitude, longitude} objects
+    // FIXED: React Native Maps Polyline expects {latitude, longitude} objects, not arrays
     let coordinates = [];
     if (routeData.paths?.[0]?.points?.coordinates && !usingFallback) {
-      // Convert from [lng, lat] arrays to {latitude, longitude} objects for frontend
+      // Convert from [lng, lat] arrays to {latitude, longitude} objects
       coordinates = routeData.paths[0].points.coordinates.map(coord => ({
         latitude: coord[1],
         longitude: coord[0]
       }));
-      console.log('Processed coordinates for map:', coordinates.length);
+      console.log('Processed coordinates for React Native Maps Polyline:', coordinates.length);
     } else {
-      // Fallback coordinates
+      // Fallback coordinates in correct object format
       coordinates = generateStraightLine(start, end);
     }
 
@@ -246,7 +240,7 @@ app.post('/api/routes/calculate', async (req, res) => {
       end,
       distance: routeData.paths?.[0]?.distance,
       duration: routeData.paths?.[0]?.time,
-      coordinates: coordinates,
+      coordinates: coordinates, // This should now be [{latitude, longitude}, {latitude, longitude}, ...]
       instructions: routeData.paths?.[0]?.instructions,
       timestamp: new Date().toISOString(),
       fallback: usingFallback
@@ -256,8 +250,8 @@ app.post('/api/routes/calculate', async (req, res) => {
       fallback: route.fallback,
       coordinateCount: route.coordinates.length,
       hasInstructions: !!route.instructions,
-      distance: route.distance,
-      duration: route.duration
+      firstCoordinate: route.coordinates[0],
+      coordinateFormat: typeof route.coordinates[0]
     });
 
     if (vehicleId) {
@@ -329,7 +323,7 @@ function estimateDuration(start, end) {
 }
 
 function generateStraightLine(start, end) {
-  const steps = 50; // Increased for smoother line
+  const steps = 50;
   const coordinates = [];
   
   for (let i = 0; i <= steps; i++) {
@@ -392,7 +386,10 @@ async function checkRoutesForHazards(newHazard) {
   activeRoutes.forEach(async (route, vehicleId) => {
     if (route.coordinates) {
       for (const coord of route.coordinates) {
-        const point = { latitude: coord.latitude, longitude: coord.longitude };
+        const point = { 
+          latitude: coord.latitude,
+          longitude: coord.longitude
+        };
         const distance = calculateDistance(point, newHazard.location);
         
         if (distance <= HAZARD_PROXIMITY_METERS) {
@@ -454,7 +451,7 @@ async function recalculateRouteForVehicle(vehicleId, start, end) {
       usingFallback = true;
     }
 
-    // Process coordinates - GraphHopper returns [lng, lat], convert to {latitude, longitude} objects
+    // FIXED: React Native Maps Polyline expects {latitude, longitude} objects
     let coordinates = [];
     if (routeData.paths?.[0]?.points?.coordinates && !usingFallback) {
       coordinates = routeData.paths[0].points.coordinates.map(coord => ({
