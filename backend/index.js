@@ -10,7 +10,7 @@ const GRAPH_HOPPER_URL = 'https://graphhopper.com/api/1/route';
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({ server, path: '/ws' });
 
 app.use(cors({
   origin: [
@@ -38,8 +38,17 @@ const broadcastToClients = (data) => {
   });
 };
 
-wss.on('connection', (ws) => {
-  console.log('New WebSocket client connected');
+wss.on('connection', (ws, req) => {
+  const clientIp = req.socket.remoteAddress;
+  console.log(`New WebSocket client connected from ${clientIp} via /ws`);
+  
+  // Initialize keepalive flag
+  ws.isAlive = true;
+  
+  // Handle pong responses
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
   
   ws.send(JSON.stringify({
     type: 'INITIAL_DATA',
@@ -78,9 +87,22 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    console.log('Client disconnected');
+    console.log(`Client disconnected from ${clientIp}`);
   });
 });
+
+// Ping/pong keepalive every 30 seconds
+const keepaliveInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      console.log('Terminating unresponsive WebSocket connection');
+      return ws.terminate();
+    }
+    
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 30000);
 
 console.log('GraphHopper API Key configured:', !!process.env.GRAPHHOPPER_API_KEY);
 
@@ -565,4 +587,9 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Fleet Navigation Backend running on port ${PORT}`);
   console.log(`WebSocket server ready for connections`);
   console.log(`GraphHopper API Key: ${process.env.GRAPHHOPPER_API_KEY ? 'Configured' : 'Not configured (using fallback routing)'}`);
+});
+
+// Cleanup keepalive on server shutdown
+wss.on('close', () => {
+  clearInterval(keepaliveInterval);
 });
