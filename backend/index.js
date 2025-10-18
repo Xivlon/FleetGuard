@@ -106,6 +106,18 @@ const keepaliveInterval = setInterval(() => {
 
 console.log('GraphHopper API Key configured:', !!process.env.GRAPHHOPPER_API_KEY);
 
+function buildGraphHopperParams(start, end, apiKey, { instructions = true, profile = 'car' } = {}) {
+  const params = new URLSearchParams();
+  params.append('point', `${start.latitude},${start.longitude}`);
+  params.append('point', `${end.latitude},${end.longitude}`);
+  params.set('profile', profile);
+  params.set('points_encoded', 'false');
+  params.set('instructions', instructions ? 'true' : 'false');
+  params.set('locale', 'en');
+  params.set('key', apiKey);
+  return params;
+}
+
 app.get('/api/hazards', (req, res) => {
   const { severity, timeFilter } = req.query;
   let filteredHazards = Array.from(hazards.values());
@@ -222,21 +234,14 @@ app.post('/api/routes/calculate', async (req, res) => {
     
     if (apiKey) {
       try {
-        const response = await axios.get(GRAPH_HOPPER_URL, {
-          params: {
-            point: [`${start.latitude},${start.longitude}`, `${end.latitude},${end.longitude}`],
-            vehicle: 'car',
-            locale: 'en',
-            key: apiKey,
-            points_encoded: false,
-            instructions: true
-          }
-        });
+        const params = buildGraphHopperParams(start, end, apiKey, { instructions: true, profile: 'car' });
+        const response = await axios.get(`${GRAPH_HOPPER_URL}?${params.toString()}`, { timeout: 10000 });
         routeData = response.data;
         console.log('GraphHopper API Success - Using real routing');
         console.log('Route points received:', routeData.paths?.[0]?.points?.coordinates?.length || 0);
       } catch (apiError) {
         console.log('GraphHopper API failed, using fallback:', apiError.message);
+        console.log('Status:', apiError.response?.status, 'Response:', apiError.response?.data);
         routeData = generateFallbackRoute(start, end);
         usingFallback = true;
       }
@@ -455,19 +460,12 @@ async function recalculateRouteForVehicle(vehicleId, start, end) {
   try {
     if (apiKey) {
       try {
-        const response = await axios.get(GRAPH_HOPPER_URL, {
-          params: {
-            point: [`${start.latitude},${start.longitude}`, `${end.latitude},${end.longitude}`],
-            vehicle: 'car',
-            locale: 'en',
-            key: apiKey,
-            points_encoded: false,
-            instructions: true
-          }
-        });
+        const params = buildGraphHopperParams(start, end, apiKey, { instructions: true, profile: 'car' });
+        const response = await axios.get(`${GRAPH_HOPPER_URL}?${params.toString()}`, { timeout: 10000 });
         routeData = response.data;
       } catch (apiError) {
         console.log('GraphHopper API failed during recalculation, using fallback:', apiError.message);
+        console.log('Status:', apiError.response?.status, 'Response:', apiError.response?.data);
         routeData = generateFallbackRoute(start, end);
         usingFallback = true;
       }
@@ -565,21 +563,18 @@ app.get('/api/routing-status', async (req, res) => {
     const sampleStart = { latitude: 37.7749, longitude: -122.4194 };
     const sampleEnd = { latitude: 37.7849, longitude: -122.4094 };
 
-    const response = await axios.get(GRAPH_HOPPER_URL, {
-      params: {
-        point: [`${sampleStart.latitude},${sampleStart.longitude}`, `${sampleEnd.latitude},${sampleEnd.longitude}`],
-        vehicle: 'car',
-        points_encoded: false,
-        key: process.env.GRAPHHOPPER_API_KEY,
-        instructions: false
-      },
-      timeout: 5000
-    });
+    const params = buildGraphHopperParams(sampleStart, sampleEnd, process.env.GRAPHHOPPER_API_KEY, { instructions: false, profile: 'car' });
+    const response = await axios.get(`${GRAPH_HOPPER_URL}?${params.toString()}`, { timeout: 5000 });
 
     const pointCount = response.data.paths?.[0]?.points?.coordinates?.length || 0;
     return res.json({ configured: true, provider: 'graphhopper', reachable: true, points: pointCount });
   } catch (error) {
-    return res.json({ configured: true, provider: 'graphhopper', reachable: false, error: error.message });
+    const errorDetails = {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    };
+    return res.json({ configured: true, provider: 'graphhopper', reachable: false, error: errorDetails });
   }
 });
 
