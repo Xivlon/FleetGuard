@@ -11,9 +11,10 @@ const wss = new WebSocket.Server({ server });
 
 app.use(cors({
   origin: [
-    "https://yourapp.railway.app",
-    "http://localhost:3000",
-    "exp://your-expo-app"
+    "https://fleetguard.onrender.com",  // Production
+    "http://localhost:3000",            // Local development
+    "exp://your-expo-app",              // Expo development
+    "http://172.16.6.175:5000"          // Your local network
   ],
   credentials: true
 }));
