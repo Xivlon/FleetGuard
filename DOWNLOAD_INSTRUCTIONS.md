@@ -2,7 +2,7 @@
 
 ## ⚠️ Important Notice
 
-This is a **React Native mobile application** that runs on your phone or emulator. It **cannot run in Replit's browser**.
+This is a **React Native mobile application** that runs on your phone or emulator. It **cannot run in Replit's browser**..
 
 ## 🚀 Quick Start Guide
 
