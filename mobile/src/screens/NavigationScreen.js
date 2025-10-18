@@ -21,6 +21,23 @@ const COLORS = {
   routeColor: '#10B981',
 };
 
+// Helper function to normalize coordinates from either array [lng, lat] or object {latitude, longitude}
+const normalizeCoord = (coord) => {
+  if (!coord) return null;
+  
+  // If it's already an object with latitude and longitude, return it
+  if (typeof coord === 'object' && coord.latitude !== undefined && coord.longitude !== undefined) {
+    return { latitude: coord.latitude, longitude: coord.longitude };
+  }
+  
+  // If it's an array [lng, lat], convert to object
+  if (Array.isArray(coord) && coord.length >= 2) {
+    return { latitude: coord[1], longitude: coord[0] };
+  }
+  
+  return null;
+};
+
 export default function NavigationScreen({ navigation }) {
   const { hazards, backendUrl, routes } = useWebSocket();
   const [startLat, setStartLat] = useState('37.7749');
@@ -81,8 +98,11 @@ export default function NavigationScreen({ navigation }) {
     const routeHazards = [];
     hazards.forEach(hazard => {
       route.coordinates?.forEach(coord => {
+        const normalized = normalizeCoord(coord);
+        if (!normalized) return;
+        
         const distance = calculateDistance(
-          { latitude: coord[1], longitude: coord[0] },
+          normalized,
           hazard.location
         );
         if (distance < 500) {
@@ -226,10 +246,9 @@ export default function NavigationScreen({ navigation }) {
 
           {route && route.coordinates && (
             <Polyline
-              coordinates={route.coordinates.map(coord => ({
-                latitude: coord[1],
-                longitude: coord[0],
-              }))}
+              coordinates={route.coordinates
+                .map(coord => normalizeCoord(coord))
+                .filter(coord => coord !== null)}
               strokeColor={COLORS.routeColor}
               strokeWidth={4}
             />
