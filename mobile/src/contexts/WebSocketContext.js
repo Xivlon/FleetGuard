@@ -5,10 +5,10 @@ const WebSocketContext = createContext(null);
 
 // Use environment-aware URLs
 const BACKEND_URL = __DEV__ 
-  ? 'http://172.16.6.175:5000'  // Development
-  : 'https://railway.com/project/6cfcd4a9-5d52-479f-aa33-b7c70dd27999?environmentId=3f9064d0-0ffc-4d13-9072-7836cbb0ff86'; // Production
-
+  ? 'http://172.16.6.175:5000'  // Local development
+  : 'https://fleetguard.onrender.com'; // ← YOUR RENDER URL!
 const WS_URL = BACKEND_URL.replace('http', 'ws');
+
 export const WebSocketProvider = ({ children }) => {
   const [vehicles, setVehicles] = useState([]);
   const [hazards, setHazards] = useState([]);
