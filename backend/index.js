@@ -187,42 +187,54 @@ app.post('/api/routes/calculate', async (req, res) => {
     }
 
     const graphHopperUrl = 'https://graphhopper.com/api/1/route';
-     const apiKey = process.env.GRAPHHOPPER_API_KEY || '71099fbd-8aa6-461e-94e1-aac795e457de';
-      console.log('GraphHopper API Key configured:', !!apiKey);
-      console.log('API Key value:', process.env.GRAPHHOPPER_API_KEY); 
-      console.log('All environment variables:', Object.keys(process.env));
+    const apiKey = process.env.GRAPHHOPPER_API_KEY;
+    
+    console.log('GraphHopper API Key configured:', !!apiKey);
+
     let routeData;
+    let usingFallback = false;
     
     if (apiKey) {
-      const response = await axios.get(graphHopperUrl, {
-        params: {
-          point: [`${start.latitude},${start.longitude}`, `${end.latitude},${end.longitude}`],
-          vehicle: 'car',
-          locale: 'en',
-          key: apiKey,
-          points_encoded: false,
-          instructions: true
-        }
-      });
-      routeData = response.data;
+      try {
+        const response = await axios.get(graphHopperUrl, {
+          params: {
+            point: [`${start.latitude},${start.longitude}`, `${end.latitude},${end.longitude}`],
+            vehicle: 'car',
+            locale: 'en',
+            key: apiKey,
+            points_encoded: false,
+            instructions: true
+          }
+        });
+        routeData = response.data;
+        console.log('✅ GraphHopper API Success - Using real routing');
+      } catch (apiError) {
+        console.log('❌ GraphHopper API failed, using fallback:', apiError.message);
+        routeData = generateFallbackRoute(start, end);
+        usingFallback = true;
+      }
     } else {
+      console.log('❌ No API key, using fallback');
       routeData = generateFallbackRoute(start, end);
+      usingFallback = true;
     }
 
     const route = {
       vehicleId: vehicleId || null,
       start,
       end,
-      distance: routeData.paths?.[0]?.distance || calculateDistance(start, end),
-      duration: routeData.paths?.[0]?.time || estimateDuration(start, end),
-      coordinates: routeData.paths?.[0]?.points?.coordinates || generateStraightLine(start, end),
-      instructions: routeData.paths?.[0]?.instructions || generateBasicInstructions(start, end),
-      timestamp: new Date().toISOString()
+      distance: routeData.paths?.[0]?.distance,
+      duration: routeData.paths?.[0]?.time,
+      coordinates: routeData.paths?.[0]?.points?.coordinates,
+      instructions: routeData.paths?.[0]?.instructions,
+      timestamp: new Date().toISOString(),
+      fallback: usingFallback
     };
+
+    console.log('Route fallback status:', route.fallback);
 
     if (vehicleId) {
       activeRoutes.set(vehicleId, route);
-      
       broadcastToClients({
         type: 'ROUTE_UPDATED',
         route
@@ -240,10 +252,10 @@ app.post('/api/routes/calculate', async (req, res) => {
       vehicleId: vehicleId || null,
       start,
       end,
-      distance: calculateDistance(start, end),
-      duration: estimateDuration(start, end),
-      coordinates: generateStraightLine(start, end),
-      instructions: generateBasicInstructions(start, end),
+      distance: fallbackRoute.paths[0].distance,
+      duration: fallbackRoute.paths[0].time,
+      coordinates: fallbackRoute.paths[0].points.coordinates,
+      instructions: fallbackRoute.paths[0].instructions,
       timestamp: new Date().toISOString(),
       fallback: true
     };
@@ -387,26 +399,33 @@ async function checkRoutesForHazards(newHazard) {
 }
 
 async function recalculateRouteForVehicle(vehicleId, start, end) {
- const apiKey = process.env.GRAPHHOPPER_API_KEY;
+  const apiKey = process.env.GRAPHHOPPER_API_KEY;
+  let routeData;
+  let usingFallback = false;
   
   try {
-    let routeData;
-    
     if (apiKey) {
-      const graphHopperUrl = 'https://graphhopper.com/api/1/route';
-      const response = await axios.get(graphHopperUrl, {
-        params: {
-          point: [`${start.latitude},${start.longitude}`, `${end.latitude},${end.longitude}`],
-          vehicle: 'car',
-          locale: 'en',
-          key: apiKey,
-          points_encoded: false,
-          instructions: true
-        }
-      });
-      routeData = response.data;
+      try {
+        const graphHopperUrl = 'https://graphhopper.com/api/1/route';
+        const response = await axios.get(graphHopperUrl, {
+          params: {
+            point: [`${start.latitude},${start.longitude}`, `${end.latitude},${end.longitude}`],
+            vehicle: 'car',
+            locale: 'en',
+            key: apiKey,
+            points_encoded: false,
+            instructions: true
+          }
+        });
+        routeData = response.data;
+      } catch (apiError) {
+        console.log('GraphHopper API failed during recalculation, using fallback:', apiError.message);
+        routeData = generateFallbackRoute(start, end);
+        usingFallback = true;
+      }
     } else {
       routeData = generateFallbackRoute(start, end);
+      usingFallback = true;
     }
 
     const route = {
@@ -418,7 +437,8 @@ async function recalculateRouteForVehicle(vehicleId, start, end) {
       coordinates: routeData.paths?.[0]?.points?.coordinates || generateStraightLine(start, end),
       instructions: routeData.paths?.[0]?.instructions || generateBasicInstructions(start, end),
       timestamp: new Date().toISOString(),
-      recalculated: true
+      recalculated: true,
+      fallback: usingFallback
     };
 
     activeRoutes.set(vehicleId, route);
@@ -478,5 +498,5 @@ app.get('/api/health', (req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Fleet Navigation Backend running on port ${PORT}`);
   console.log(`WebSocket server ready for connections`);
-  console.log(`GraphHopper API Key: ${process.env.GRAPHHOPPER_API_KEY? 'Configured' : 'Not configured (using fallback routing)'}`);
+  console.log(`GraphHopper API Key: ${process.env.GRAPHHOPPER_API_KEY ? 'Configured' : 'Not configured (using fallback routing)'}`);
 });
