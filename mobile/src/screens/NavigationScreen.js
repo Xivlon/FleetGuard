@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,11 @@ import {
   TextInput,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker, Polyline, UrlTile, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { watchPosition, calculateHeading } from '../services/location';
 
 const COLORS = {
   primary: '#10B981',
@@ -39,7 +41,7 @@ const normalizeCoord = (coord) => {
 };
 
 export default function NavigationScreen({ navigation }) {
-  const { hazards, backendUrl, routes } = useWebSocket();
+  const { hazards, backendUrl, routes, sendVehiclePosition } = useWebSocket();
   const [startLat, setStartLat] = useState('37.7749');
   const [startLon, setStartLon] = useState('-122.4194');
   const [endLat, setEndLat] = useState('37.7849');
@@ -48,12 +50,105 @@ export default function NavigationScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [vehicleId] = useState('demo-vehicle');
+  const [followMe, setFollowMe] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationSubscription, setLocationSubscription] = useState(null);
+  const [isRerouting, setIsRerouting] = useState(false);
+  const mapRef = useRef(null);
+  const lastPositionRef = useRef(null);
 
   useEffect(() => {
     if (routes[vehicleId]) {
-      setRoute(routes[vehicleId]);
+      const newRoute = routes[vehicleId];
+      const routeChanged = !route || 
+        route.timestamp !== newRoute.timestamp ||
+        route.coordinates?.length !== newRoute.coordinates?.length;
+      
+      if (routeChanged) {
+        // If we have an existing route and it changed, we're receiving a re-route
+        if (route && route.timestamp !== newRoute.timestamp) {
+          console.log('Route updated - re-routing complete');
+        }
+        
+        setRoute(newRoute);
+        setIsRerouting(false);
+        
+        // If following and new route arrives, fit camera to route
+        if (followMe && mapRef.current && newRoute.coordinates?.length > 0) {
+          setTimeout(() => {
+            mapRef.current?.fitToCoordinates(
+              newRoute.coordinates.map(coord => normalizeCoord(coord)).filter(c => c),
+              {
+                edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                animated: true,
+              }
+            );
+          }, 100);
+        }
+      }
     }
   }, [routes, vehicleId]);
+
+  // Location tracking effect
+  useEffect(() => {
+    let subscription = null;
+    
+    const startLocationTracking = async () => {
+      try {
+        subscription = await watchPosition((location) => {
+          const { latitude, longitude, coords } = location;
+          const currentPosition = {
+            latitude: coords?.latitude || latitude,
+            longitude: coords?.longitude || longitude,
+          };
+          
+          setUserLocation(currentPosition);
+          
+          // Calculate heading if we have a previous position
+          let heading = coords?.heading;
+          if (!heading && lastPositionRef.current) {
+            heading = calculateHeading(lastPositionRef.current, currentPosition);
+          }
+          
+          // Send position to backend
+          sendVehiclePosition(
+            vehicleId,
+            currentPosition.latitude,
+            currentPosition.longitude,
+            coords?.speed || 0,
+            heading || 0
+          );
+          
+          lastPositionRef.current = currentPosition;
+          
+          // Follow user if enabled
+          if (followMe && mapRef.current) {
+            mapRef.current.animateCamera({
+              center: currentPosition,
+              heading: heading || 0,
+              pitch: 45,
+              zoom: 16,
+            }, { duration: 500 });
+          }
+        });
+        
+        setLocationSubscription(subscription);
+      } catch (error) {
+        console.error('Failed to start location tracking:', error);
+        Alert.alert('Location Error', 'Failed to access location services. Please enable location permissions.');
+      }
+    };
+    
+    if (route) {
+      startLocationTracking();
+    }
+    
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
+  }, [route, followMe, vehicleId, sendVehiclePosition]);
 
   const calculateRoute = async () => {
     setLoading(true);
@@ -215,8 +310,16 @@ export default function NavigationScreen({ navigation }) {
         </View>
       )}
 
+      {isRerouting && (
+        <View style={styles.reroutingBanner}>
+          <ActivityIndicator color={COLORS.primary} size="small" />
+          <Text style={styles.reroutingText}>Recalculating route...</Text>
+        </View>
+      )}
+
       <View style={styles.mapContainer}>
         <MapView
+          ref={mapRef}
           provider={PROVIDER_DEFAULT}
           style={styles.map}
           region={mapRegion}
@@ -244,6 +347,15 @@ export default function NavigationScreen({ navigation }) {
             pinColor={COLORS.secondary}
           />
 
+          {userLocation && (
+            <Marker
+              coordinate={userLocation}
+              title="Your Location"
+              pinColor="#3B82F6"
+              anchor={{ x: 0.5, y: 0.5 }}
+            />
+          )}
+
           {route && route.coordinates && (
             <Polyline
               coordinates={route.coordinates
@@ -267,6 +379,17 @@ export default function NavigationScreen({ navigation }) {
             />
           ))}
         </MapView>
+
+        {route && (
+          <TouchableOpacity
+            style={styles.followMeButton}
+            onPress={() => setFollowMe(!followMe)}
+          >
+            <Text style={styles.followMeButtonText}>
+              {followMe ? '📍 Following' : '📍 Follow Me'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {route && route.instructions && route.instructions.length > 0 && (
@@ -452,6 +575,41 @@ const styles = StyleSheet.create({
   },
   nextButtonText: {
     color: COLORS.background,
+    fontWeight: 'bold',
+  },
+  reroutingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.card,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.primary,
+    gap: 8,
+  },
+  reroutingText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  followMeButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  followMeButtonText: {
+    color: COLORS.background,
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });

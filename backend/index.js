@@ -25,9 +25,15 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
 
+// Off-route detection configuration
+const OFF_ROUTE_DISTANCE_M = parseFloat(process.env.OFF_ROUTE_DISTANCE_M) || 50;
+const OFF_ROUTE_STRIKES = parseInt(process.env.OFF_ROUTE_STRIKES) || 3;
+
 const hazards = new Map();
 const vehicles = new Map();
 const activeRoutes = new Map();
+// Track off-route state per vehicle: { strikes: number, lastCheck: timestamp }
+const offRouteState = new Map();
 
 const broadcastToClients = (data) => {
   const message = JSON.stringify(data);
@@ -80,6 +86,34 @@ wss.on('connection', (ws, req) => {
           type: 'VEHICLE_UPDATED',
           vehicle
         });
+      }
+      
+      // Handle new vehicle:position message format
+      if (data.type === 'vehicle:position') {
+        const { vehicleId, latitude, longitude, speed, heading, timestamp } = data.payload;
+        
+        // Update vehicle state
+        const vehicle = vehicles.get(vehicleId) || {
+          id: vehicleId,
+          name: `Vehicle ${vehicleId.slice(0, 6)}`,
+          status: 'active'
+        };
+        
+        vehicle.location = { latitude, longitude };
+        vehicle.heading = heading || 0;
+        vehicle.speed = speed || 0;
+        vehicle.lastUpdate = new Date().toISOString();
+        
+        vehicles.set(vehicleId, vehicle);
+        
+        // Broadcast position to all clients
+        broadcastToClients({
+          type: 'vehicle:position',
+          payload: data.payload
+        });
+        
+        // Check for off-route condition
+        checkOffRoute(vehicleId, { latitude, longitude });
       }
     } catch (error) {
       console.error('WebSocket message error:', error);
@@ -347,6 +381,72 @@ function calculateDistance(start, end) {
   return R * c;
 }
 
+/**
+ * Calculate minimum distance from a point to a polyline in meters
+ * Uses equirectangular projection for short segments and haversine for final distance
+ * @param {Object} point - {latitude, longitude}
+ * @param {Array} polyline - Array of {latitude, longitude} objects
+ * @returns {number} - Distance in meters
+ */
+function distancePointToPolylineMeters(point, polyline) {
+  if (!polyline || polyline.length === 0) return Infinity;
+  if (polyline.length === 1) return calculateDistance(point, polyline[0]);
+
+  let minDistance = Infinity;
+
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const A = polyline[i];
+    const B = polyline[i + 1];
+    
+    // Convert to radians
+    const latP = point.latitude * Math.PI / 180;
+    const lonP = point.longitude * Math.PI / 180;
+    const latA = A.latitude * Math.PI / 180;
+    const lonA = A.longitude * Math.PI / 180;
+    const latB = B.latitude * Math.PI / 180;
+    const lonB = B.longitude * Math.PI / 180;
+    
+    // Use equirectangular projection around segment midpoint
+    const midLat = (latA + latB) / 2;
+    const R = 6371000; // Earth radius in meters
+    
+    // Convert to planar coordinates (meters)
+    const xP = R * lonP * Math.cos(midLat);
+    const yP = R * latP;
+    const xA = R * lonA * Math.cos(midLat);
+    const yA = R * latA;
+    const xB = R * lonB * Math.cos(midLat);
+    const yB = R * latB;
+    
+    // Vector from A to B
+    const dx = xB - xA;
+    const dy = yB - yA;
+    const lengthSquared = dx * dx + dy * dy;
+    
+    let closestPoint;
+    
+    if (lengthSquared === 0) {
+      // A and B are the same point
+      closestPoint = A;
+    } else {
+      // Project point P onto line AB
+      let t = ((xP - xA) * dx + (yP - yA) * dy) / lengthSquared;
+      t = Math.max(0, Math.min(1, t)); // Clamp to [0, 1]
+      
+      // Calculate closest point
+      const closestLat = (A.latitude + t * (B.latitude - A.latitude));
+      const closestLon = (A.longitude + t * (B.longitude - A.longitude));
+      closestPoint = { latitude: closestLat, longitude: closestLon };
+    }
+    
+    // Calculate haversine distance from point to closest point on segment
+    const distance = calculateDistance(point, closestPoint);
+    minDistance = Math.min(minDistance, distance);
+  }
+
+  return minDistance;
+}
+
 function estimateDuration(start, end) {
   const distance = calculateDistance(start, end);
   const avgSpeed = 50000 / 3600;
@@ -452,6 +552,60 @@ async function checkRoutesForHazards(newHazard) {
   });
 }
 
+/**
+ * Check if vehicle is off-route and trigger recalculation if needed
+ * @param {string} vehicleId 
+ * @param {Object} position - {latitude, longitude}
+ */
+function checkOffRoute(vehicleId, position) {
+  const route = activeRoutes.get(vehicleId);
+  if (!route || !route.coordinates || route.coordinates.length === 0) {
+    return;
+  }
+
+  // Debounce: don't check more than once per 2 seconds per vehicle
+  const state = offRouteState.get(vehicleId) || { strikes: 0, lastCheck: 0 };
+  const now = Date.now();
+  if (now - state.lastCheck < 2000) {
+    return;
+  }
+  state.lastCheck = now;
+
+  // Calculate distance from position to route polyline
+  const distance = distancePointToPolylineMeters(position, route.coordinates);
+  
+  if (process.env.DEBUG_OFF_ROUTE === 'true') {
+    console.log(`[${vehicleId}] Distance to route: ${distance.toFixed(2)}m, Threshold: ${OFF_ROUTE_DISTANCE_M}m, Strikes: ${state.strikes}/${OFF_ROUTE_STRIKES}`);
+  }
+
+  if (distance > OFF_ROUTE_DISTANCE_M) {
+    // Off-route: increment strike counter
+    state.strikes = (state.strikes || 0) + 1;
+    offRouteState.set(vehicleId, state);
+    
+    if (state.strikes >= OFF_ROUTE_STRIKES) {
+      console.log(`Vehicle ${vehicleId} is off-route (${distance.toFixed(2)}m away). Recalculating route...`);
+      
+      // Reset strikes
+      state.strikes = 0;
+      offRouteState.set(vehicleId, state);
+      
+      // Trigger route recalculation from current position to destination
+      const destination = route.end;
+      recalculateRouteForVehicle(vehicleId, position, destination).catch(error => {
+        console.error('Failed to recalculate route for vehicle:', vehicleId, error);
+      });
+    }
+  } else {
+    // On-route: reset strike counter
+    if (state.strikes > 0) {
+      console.log(`Vehicle ${vehicleId} back on route. Resetting strikes.`);
+      state.strikes = 0;
+      offRouteState.set(vehicleId, state);
+    }
+  }
+}
+
 async function recalculateRouteForVehicle(vehicleId, start, end) {
   const apiKey = process.env.GRAPHHOPPER_API_KEY;
   let routeData;
@@ -500,9 +654,18 @@ async function recalculateRouteForVehicle(vehicleId, start, end) {
 
     activeRoutes.set(vehicleId, route);
     
+    // Broadcast both old and new message formats for compatibility
     broadcastToClients({
       type: 'ROUTE_UPDATED',
       route
+    });
+    
+    broadcastToClients({
+      type: 'route:update',
+      payload: {
+        vehicleId,
+        route
+      }
     });
 
     return route;
