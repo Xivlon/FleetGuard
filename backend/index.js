@@ -298,7 +298,7 @@ app.post('/api/routes/calculate', async (req, res) => {
           error: 'No start location provided and no last known position found for vehicle. Please ensure the vehicle is streaming its location or provide a start coordinate.' 
         });
       }
-      console.log(`Using last known position for vehicle ${vehicleId}:`, start);
+      console.log('Using last known position for vehicle:', vehicleId, 'at coordinates:', start.latitude.toFixed(4), start.longitude.toFixed(4));
     }
 
     if (!start || !end || !start.latitude || !start.longitude || !end.latitude || !end.longitude) {
