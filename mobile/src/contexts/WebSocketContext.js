@@ -104,6 +104,22 @@ export const WebSocketProvider = ({ children }) => {
                 }));
               }
               break;
+
+            case 'vehicle:position':
+              // Echo of position updates from other clients
+              // Could be used to show other vehicles on the map
+              break;
+
+            case 'route:update':
+              // New route received (e.g., after re-routing)
+              if (data.payload && data.payload.vehicleId && data.payload.route) {
+                console.log('Route update received for vehicle:', data.payload.vehicleId);
+                setRoutes(prev => ({
+                  ...prev,
+                  [data.payload.vehicleId]: data.payload.route
+                }));
+              }
+              break;
           }
         } catch (error) {
           console.error('WebSocket message parse error:', error);
@@ -156,6 +172,22 @@ export const WebSocketProvider = ({ children }) => {
     }
   };
 
+  const sendVehiclePosition = (vehicleId, latitude, longitude, speed, heading) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'vehicle:position',
+        payload: {
+          vehicleId,
+          latitude,
+          longitude,
+          speed: speed || 0,
+          heading: heading || 0,
+          timestamp: Date.now()
+        }
+      }));
+    }
+  };
+
   const recalculateRoute = async (vehicleId, start, end) => {
     try {
       const response = await fetch(`${backendUrl}/api/routes/calculate`, {
@@ -184,6 +216,7 @@ export const WebSocketProvider = ({ children }) => {
       routeAlerts,
       connected,
       updateVehicleLocation,
+      sendVehiclePosition,
       recalculateRoute,
       backendUrl,
       setBackendUrl

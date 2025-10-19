@@ -15,6 +15,7 @@
     "axios": "^1.12.2",
     "cors": "^2.8.5",
     "expo": "^54.0.13",
+    "expo-location": "~17.0.1",
     "expo-status-bar": "~3.0.8",
     "express": "^5.1.0",
     "react": "19.1.0",
