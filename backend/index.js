@@ -593,7 +593,7 @@ function checkOffRoute(vehicleId, position) {
       // Trigger route recalculation from current position to destination
       const destination = route.end;
       recalculateRouteForVehicle(vehicleId, position, destination).catch(error => {
-        console.error(`Failed to recalculate route for ${vehicleId}:`, error);
+        console.error('Failed to recalculate route for vehicle:', vehicleId, error);
       });
     }
   } else {
