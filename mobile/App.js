@@ -4,7 +4,8 @@ import { createStackNavigator } from '@react-navigation/stack';
 import FleetDashboard from './src/screens/FleetDashboard';
 import NavigationScreen from './src/screens/NavigationScreen';
 import ReportHazardScreen from './src/screens/ReportHazardScreen';
-import { WebSocketProvider } from './src/contexts/WebSocketContext';
+import { WebSocketProvider, useWebSocket } from './src/contexts/WebSocketContext';
+import { LocationProvider } from './src/contexts/LocationContext';
 
 const Stack = createStackNavigator();
 
@@ -17,9 +18,13 @@ const COLORS = {
   border: '#10B981',
 };
 
-export default function App() {
+// Inner component that has access to WebSocket context
+function AppContent() {
+  const { sendVehiclePosition } = useWebSocket();
+  const vehicleId = 'demo-vehicle'; // Using same vehicleId as NavigationScreen
+
   return (
-    <WebSocketProvider>
+    <LocationProvider vehicleId={vehicleId} sendVehiclePosition={sendVehiclePosition}>
       <NavigationContainer
         theme={{
           dark: true,
@@ -64,6 +69,14 @@ export default function App() {
           />
         </Stack.Navigator>
       </NavigationContainer>
+    </LocationProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <WebSocketProvider>
+      <AppContent />
     </WebSocketProvider>
   );
 }

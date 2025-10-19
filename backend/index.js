@@ -140,6 +140,22 @@ const keepaliveInterval = setInterval(() => {
 
 console.log('GraphHopper API Key configured:', !!process.env.GRAPHHOPPER_API_KEY);
 
+/**
+ * Get last known position for a vehicle
+ * @param {string} vehicleId 
+ * @returns {Object|null} - { latitude, longitude } or null if not found
+ */
+function getLastVehiclePosition(vehicleId) {
+  const vehicle = vehicles.get(vehicleId);
+  if (vehicle && vehicle.location) {
+    return {
+      latitude: vehicle.location.latitude,
+      longitude: vehicle.location.longitude
+    };
+  }
+  return null;
+}
+
 function buildGraphHopperParams(start, end, apiKey, { instructions = true, profile = 'car' } = {}) {
   const params = new URLSearchParams();
   params.append('point', `${start.latitude},${start.longitude}`);
@@ -219,6 +235,25 @@ app.get('/api/vehicles', (req, res) => {
   res.json(Array.from(vehicles.values()));
 });
 
+app.get('/api/vehicles/:vehicleId/last-position', (req, res) => {
+  const { vehicleId } = req.params;
+  const position = getLastVehiclePosition(vehicleId);
+  
+  if (!position) {
+    return res.status(404).json({ 
+      error: 'No position found for this vehicle. Vehicle may not have streamed any location data yet.' 
+    });
+  }
+  
+  const vehicle = vehicles.get(vehicleId);
+  res.json({
+    vehicleId,
+    latitude: position.latitude,
+    longitude: position.longitude,
+    timestamp: vehicle.lastUpdate || new Date().toISOString()
+  });
+});
+
 app.post('/api/vehicles', (req, res) => {
   const { name, location } = req.body;
   
@@ -253,7 +288,18 @@ app.get('/api/routes/:vehicleId', (req, res) => {
 
 app.post('/api/routes/calculate', async (req, res) => {
   try {
-    const { start, end, vehicleId } = req.body;
+    let { start, end, vehicleId } = req.body;
+
+    // Allow start to be omitted if vehicleId is provided
+    if (!start && vehicleId) {
+      start = getLastVehiclePosition(vehicleId);
+      if (!start) {
+        return res.status(400).json({ 
+          error: 'No start location provided and no last known position found for vehicle. Please ensure the vehicle is streaming its location or provide a start coordinate.' 
+        });
+      }
+      console.log(`Using last known position for vehicle ${vehicleId}:`, start);
+    }
 
     if (!start || !end || !start.latitude || !start.longitude || !end.latitude || !end.longitude) {
       return res.status(400).json({ error: 'Invalid start or end coordinates' });

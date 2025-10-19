@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import MapView, { Marker, Polyline, UrlTile, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useLocation } from '../contexts/LocationContext';
 import { watchPosition, calculateHeading } from '../services/location';
 
 const COLORS = {
@@ -42,10 +43,12 @@ const normalizeCoord = (coord) => {
 
 export default function NavigationScreen({ navigation }) {
   const { hazards, backendUrl, routes, sendVehiclePosition } = useWebSocket();
+  const { currentLocation, permissionStatus, requestPermissions, openSettings } = useLocation();
   const [startLat, setStartLat] = useState('37.7749');
   const [startLon, setStartLon] = useState('-122.4194');
   const [endLat, setEndLat] = useState('37.7849');
   const [endLon, setEndLon] = useState('-122.4094');
+  const [useMyLocation, setUseMyLocation] = useState(true);
   const [route, setRoute] = useState(null);
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -151,16 +154,46 @@ export default function NavigationScreen({ navigation }) {
   }, [route, followMe, vehicleId, sendVehiclePosition]);
 
   const calculateRoute = async () => {
+    // Check if we should use current location
+    let startCoords;
+    if (useMyLocation && currentLocation) {
+      startCoords = currentLocation;
+    } else if (useMyLocation && permissionStatus === 'denied') {
+      Alert.alert(
+        'Location Permission Required',
+        'Please grant location permission to use your current location as the start point.',
+        [
+          { text: 'Open Settings', onPress: openSettings },
+          { text: 'Retry', onPress: requestPermissions },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
+      return;
+    } else if (useMyLocation && !currentLocation) {
+      Alert.alert(
+        'Location Unavailable',
+        'Waiting for location... Please try again in a moment.',
+        [
+          { text: 'Use Manual Coordinates', onPress: () => setUseMyLocation(false) },
+          { text: 'OK' }
+        ]
+      );
+      return;
+    } else {
+      // Use manual coordinates
+      startCoords = {
+        latitude: parseFloat(startLat),
+        longitude: parseFloat(startLon),
+      };
+    }
+
     setLoading(true);
     try {
       const response = await fetch(`${backendUrl}/api/routes/calculate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          start: {
-            latitude: parseFloat(startLat),
-            longitude: parseFloat(startLon),
-          },
+          start: startCoords,
           end: {
             latitude: parseFloat(endLat),
             longitude: parseFloat(endLon),
@@ -170,6 +203,11 @@ export default function NavigationScreen({ navigation }) {
       });
 
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to calculate route');
+      }
+      
       setRoute(data);
       setCurrentStep(0);
       
@@ -181,7 +219,7 @@ export default function NavigationScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Route calculation error:', error);
-      Alert.alert('Error', 'Failed to calculate route. Please try again.');
+      Alert.alert('Error', error.message || 'Failed to calculate route. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -242,26 +280,83 @@ export default function NavigationScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Start Location</Text>
-        <View style={styles.coordRow}>
-          <TextInput
-            style={styles.input}
-            value={startLat}
-            onChangeText={setStartLat}
-            placeholder="Latitude"
-            placeholderTextColor="#666"
-            keyboardType="numeric"
-          />
-          <TextInput
-            style={styles.input}
-            value={startLon}
-            onChangeText={setStartLon}
-            placeholder="Longitude"
-            placeholderTextColor="#666"
-            keyboardType="numeric"
-          />
+      {/* Location Status Indicator */}
+      <View style={styles.locationStatusBar}>
+        <View style={styles.locationStatusContent}>
+          <Text style={styles.locationStatusText}>
+            📍 Location: {
+              permissionStatus === 'checking' ? 'Checking...' :
+              permissionStatus === 'granted' && currentLocation ? 'Active' :
+              permissionStatus === 'granted' && !currentLocation ? 'Searching...' :
+              permissionStatus === 'denied' ? 'Denied' :
+              'Unavailable'
+            }
+          </Text>
+          {permissionStatus === 'denied' && (
+            <View style={styles.permissionActions}>
+              <TouchableOpacity
+                style={styles.permissionButton}
+                onPress={openSettings}
+              >
+                <Text style={styles.permissionButtonText}>Settings</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.permissionButton}
+                onPress={requestPermissions}
+              >
+                <Text style={styles.permissionButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
+      </View>
+
+      <View style={styles.inputContainer}>
+        {/* Toggle for using my location */}
+        <View style={styles.toggleContainer}>
+          <TouchableOpacity
+            style={styles.toggleButton}
+            onPress={() => setUseMyLocation(!useMyLocation)}
+          >
+            <View style={[styles.checkbox, useMyLocation && styles.checkboxChecked]}>
+              {useMyLocation && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <Text style={styles.toggleLabel}>Use my location as start</Text>
+          </TouchableOpacity>
+        </View>
+
+        {!useMyLocation && (
+          <>
+            <Text style={styles.label}>Start Location</Text>
+            <View style={styles.coordRow}>
+              <TextInput
+                style={styles.input}
+                value={startLat}
+                onChangeText={setStartLat}
+                placeholder="Latitude"
+                placeholderTextColor="#666"
+                keyboardType="numeric"
+              />
+              <TextInput
+                style={styles.input}
+                value={startLon}
+                onChangeText={setStartLon}
+                placeholder="Longitude"
+                placeholderTextColor="#666"
+                keyboardType="numeric"
+              />
+            </View>
+          </>
+        )}
+
+        {useMyLocation && currentLocation && (
+          <View style={styles.currentLocationDisplay}>
+            <Text style={styles.label}>Current Location (Start)</Text>
+            <Text style={styles.coordText}>
+              {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+            </Text>
+          </View>
+        )}
 
         <Text style={styles.label}>End Location</Text>
         <View style={styles.coordRow}>
@@ -450,6 +545,76 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  locationStatusBar: {
+    backgroundColor: COLORS.card,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  locationStatusContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  locationStatusText: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  permissionActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  permissionButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+  },
+  permissionButtonText: {
+    color: COLORS.background,
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  toggleContainer: {
+    marginBottom: 12,
+  },
+  toggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.primary,
+  },
+  checkmark: {
+    color: COLORS.background,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  toggleLabel: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  currentLocationDisplay: {
+    marginBottom: 12,
+  },
+  coordText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontFamily: 'monospace',
   },
   inputContainer: {
     padding: 12,
