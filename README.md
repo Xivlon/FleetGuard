@@ -72,11 +72,64 @@ The mobile app is built with Expo and React Native, featuring:
 - Mobile-optimized touch interface
 - Dark theme with green accents for outdoor visibility
 
+## Development Setup
+
+### Prerequisites
+
+- Node.js 20.19.5 (use `.nvmrc` for automatic version selection with nvm)
+- npm
+
+### Installing Dependencies
+
+```bash
+# Install all dependencies (root, backend, and mobile)
+npm install
+cd backend && npm install
+cd ../mobile && npm install
+```
+
+### Development Scripts
+
+**Root workspace:**
+- `npm run dev` - Start the backend in development mode
+- `npm run lint` - Lint all code
+- `npm run lint:fix` - Auto-fix linting issues
+
+**Backend:**
+- `npm run dev` - Start the backend server
+- `npm run lint` - Lint backend code
+- `npm test` - Run backend tests
+- `npm run build` - Build backend (currently a placeholder)
+
+**Mobile:**
+- `npm start` - Start Expo development server
+- `npm run dev` - Start Expo with dev client
+- `npm run start:lan` - Start Expo on LAN network
+- `npm run start:tunnel` - Start Expo with tunnel
+- `npm run lint` - Lint mobile code
+- `npm run android` - Run on Android device
+- `npm run ios` - Run on iOS device
+
+### Pre-commit Hooks
+
+This project uses Husky and lint-staged to automatically lint code before commits. Linting will run automatically on staged files when you commit.
+
+### Continuous Integration
+
+GitHub Actions workflows automatically run on pull requests and pushes to main:
+- **Backend CI**: Runs on Node 18 and 20, performs linting, testing, and build verification
+- **Mobile CI**: Runs linting and Expo doctor checks
+
 ## Running the Project
 
 ### Backend Server
 
 The backend server is configured to run automatically. It listens on port 5000.
+
+```bash
+cd backend
+npm run dev
+```
 
 ### Mobile App
 
