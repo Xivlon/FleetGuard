@@ -23,8 +23,10 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: '/ws' });
 
 // Security headers
+// Disable contentSecurityPolicy only in development to avoid conflicts with dev tools
+// In production, all helmet security features are enabled
 app.use(helmet({
-  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false
+  contentSecurityPolicy: process.env.NODE_ENV === 'development' ? false : undefined
 }));
 
 // CORS configuration from environment variable
@@ -54,9 +56,7 @@ const routeRateLimiter = rateLimit({
   max: 100, // Limit each IP to 100 requests per windowMs
   message: { error: 'Too many route calculation requests, please try again later' },
   standardHeaders: true,
-  legacyHeaders: false,
-  // Use vehicleId from body if available, fall back to IP
-  skip: (req) => false
+  legacyHeaders: false
 });
 
 const PORT = process.env.PORT || 5000;
