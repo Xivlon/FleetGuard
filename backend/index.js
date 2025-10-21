@@ -29,13 +29,50 @@ const PORT = process.env.PORT || 5000;
 const OFF_ROUTE_DISTANCE_M = parseFloat(process.env.OFF_ROUTE_DISTANCE_M) || 50;
 const OFF_ROUTE_STRIKES = parseInt(process.env.OFF_ROUTE_STRIKES) || 3;
 
+// WebSocket heartbeat configuration
+const WS_PING_INTERVAL_MS = parseInt(process.env.WS_PING_INTERVAL_MS) || 20000;
+const WS_PING_GRACE_MULTIPLIER = parseInt(process.env.WS_PING_GRACE_MULTIPLIER) || 2;
+
+// Broadcast throttling configuration
+const POSITION_BROADCAST_MAX_PER_SEC = parseInt(process.env.POSITION_BROADCAST_MAX_PER_SEC) || 5;
+
 const hazards = new Map();
 const vehicles = new Map();
 const activeRoutes = new Map();
 // Track off-route state per vehicle: { strikes: number, lastCheck: timestamp }
 const offRouteState = new Map();
+// Track broadcast throttling per vehicle: { timestamps: Array<number> }
+const broadcastThrottle = new Map();
+// Track presence: connected clients count and per-vehicle last-seen
+let connectedClientsCount = 0;
+const vehicleLastSeen = new Map();
 
 const broadcastToClients = (data) => {
+  // Apply throttling for vehicle:position messages
+  if (data.type === 'vehicle:position' && data.payload && data.payload.vehicleId) {
+    const vehicleId = data.payload.vehicleId;
+    const now = Date.now();
+    
+    // Get or initialize throttle state for this vehicle
+    if (!broadcastThrottle.has(vehicleId)) {
+      broadcastThrottle.set(vehicleId, { timestamps: [] });
+    }
+    
+    const throttleState = broadcastThrottle.get(vehicleId);
+    
+    // Remove timestamps older than 1 second
+    throttleState.timestamps = throttleState.timestamps.filter(t => now - t < 1000);
+    
+    // Check if we've exceeded the rate limit
+    if (throttleState.timestamps.length >= POSITION_BROADCAST_MAX_PER_SEC) {
+      // Drop this broadcast to prevent backpressure
+      return;
+    }
+    
+    // Record this broadcast
+    throttleState.timestamps.push(now);
+  }
+  
   const message = JSON.stringify(data);
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
@@ -48,12 +85,18 @@ wss.on('connection', (ws, req) => {
   const clientIp = req.socket.remoteAddress;
   console.log(`New WebSocket client connected from ${clientIp} via /ws`);
   
+  // Track connected clients
+  connectedClientsCount++;
+  console.log(`Connected clients: ${connectedClientsCount}`);
+  
   // Initialize keepalive flag
   ws.isAlive = true;
+  ws.lastPingTime = Date.now();
   
   // Handle pong responses
   ws.on('pong', () => {
     ws.isAlive = true;
+    ws.lastPingTime = Date.now();
   });
   
   ws.send(JSON.stringify({
@@ -106,7 +149,10 @@ wss.on('connection', (ws, req) => {
         
         vehicles.set(vehicleId, vehicle);
         
-        // Broadcast position to all clients
+        // Track last-seen for presence/diagnostics
+        vehicleLastSeen.set(vehicleId, Date.now());
+        
+        // Broadcast position to all clients (with throttling applied in broadcastToClients)
         broadcastToClients({
           type: 'vehicle:position',
           payload: data.payload
@@ -122,21 +168,27 @@ wss.on('connection', (ws, req) => {
 
   ws.on('close', () => {
     console.log(`Client disconnected from ${clientIp}`);
+    connectedClientsCount--;
+    console.log(`Connected clients: ${connectedClientsCount}`);
   });
 });
 
-// Ping/pong keepalive every 30 seconds
+// Ping/pong keepalive with configurable interval
 const keepaliveInterval = setInterval(() => {
+  const now = Date.now();
+  const graceMs = WS_PING_INTERVAL_MS * WS_PING_GRACE_MULTIPLIER;
+  
   wss.clients.forEach((ws) => {
-    if (ws.isAlive === false) {
-      console.log('Terminating unresponsive WebSocket connection');
+    // Check if client hasn't responded within grace period
+    if (ws.isAlive === false || (now - ws.lastPingTime) > graceMs) {
+      console.log('Terminating unresponsive WebSocket connection (stale socket)');
       return ws.terminate();
     }
     
     ws.isAlive = false;
     ws.ping();
   });
-}, 30000);
+}, WS_PING_INTERVAL_MS);
 
 console.log('GraphHopper API Key configured:', !!process.env.GRAPHHOPPER_API_KEY);
 
@@ -752,11 +804,22 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 
 app.get('/api/health', (req, res) => {
+  // Build per-vehicle last-seen data
+  const vehiclePresence = {};
+  vehicleLastSeen.forEach((timestamp, vehicleId) => {
+    vehiclePresence[vehicleId] = {
+      lastSeen: new Date(timestamp).toISOString(),
+      ageMs: Date.now() - timestamp
+    };
+  });
+  
   res.json({
     status: 'ok',
     vehicles: vehicles.size,
     hazards: hazards.size,
     routes: activeRoutes.size,
+    connectedClients: connectedClientsCount,
+    vehiclePresence,
     timestamp: new Date().toISOString()
   });
 });
@@ -791,6 +854,8 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Fleet Navigation Backend running on port ${PORT}`);
   console.log(`WebSocket server ready for connections`);
   console.log(`GraphHopper API Key: ${process.env.GRAPHHOPPER_API_KEY ? 'Configured' : 'Not configured (using fallback routing)'}`);
+  console.log(`WebSocket ping interval: ${WS_PING_INTERVAL_MS}ms (grace: ${WS_PING_GRACE_MULTIPLIER}x = ${WS_PING_INTERVAL_MS * WS_PING_GRACE_MULTIPLIER}ms)`);
+  console.log(`Position broadcast throttle: ${POSITION_BROADCAST_MAX_PER_SEC} messages/sec per vehicle`);
 });
 
 // Cleanup keepalive on server shutdown
