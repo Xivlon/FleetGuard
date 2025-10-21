@@ -61,6 +61,7 @@ const routeCache = new LRUCache(CACHE_MAX_SIZE);
  * Mask API key for logging
  * @param {string} key - API key to mask
  * @returns {string} Masked key showing only first 4 and last 4 characters
+ * @security This function ensures API keys are never logged in clear text
  */
 function maskApiKey(key) {
   if (!key || key.length < 8) {
@@ -182,6 +183,7 @@ async function makeGraphHopperRequest(start, end, apiKey, requestId, attempt, st
   
   const urlWithoutKey = `${GRAPH_HOPPER_URL}?${params.toString().replace(/key=[^&]+/, 'key=***')}`;
   
+  // Security: API key is masked via maskApiKey() before logging
   logger.info({
     requestId,
     attempt,
@@ -210,6 +212,7 @@ async function calculateRoute(start, end, apiKey, options = {}) {
   const { profile = 'car' } = options;
   const requestId = uuidv4();
   
+  // Security: API key is masked via maskApiKey() before logging
   logger.info({
     requestId,
     start: { lat: start.latitude.toFixed(6), lon: start.longitude.toFixed(6) },
@@ -342,6 +345,7 @@ async function testReachability(apiKey) {
   const requestId = uuidv4();
   
   try {
+    // Security: API key is masked via maskApiKey() before logging
     logger.info({ requestId, maskedKey: maskApiKey(apiKey) }, 'Testing GraphHopper reachability');
     
     // Use a simple test route

@@ -148,6 +148,7 @@ const keepaliveInterval = setInterval(() => {
 
 console.log('GraphHopper API Key configured:', !!GRAPHHOPPER_API_KEY);
 if (GRAPHHOPPER_API_KEY) {
+  // Security: API key is masked via graphhopperClient.maskApiKey() before logging
   console.log('GraphHopper API Key (masked):', graphhopperClient.maskApiKey(GRAPHHOPPER_API_KEY));
 }
 
@@ -817,6 +818,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Fleet Navigation Backend running on port ${PORT}`);
   console.log(`WebSocket server ready for connections`);
   console.log(`Environment: ${NODE_ENV}`);
+  // Security: API key is masked via graphhopperClient.maskApiKey() before logging
   console.log(`GraphHopper API Key: ${GRAPHHOPPER_API_KEY ? `Configured (${graphhopperClient.maskApiKey(GRAPHHOPPER_API_KEY)})` : 'Not configured (using fallback routing)'}`);
 });
 
