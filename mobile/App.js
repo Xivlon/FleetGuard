@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import FleetDashboard from './src/screens/FleetDashboard';
@@ -6,6 +7,13 @@ import NavigationScreen from './src/screens/NavigationScreen';
 import ReportHazardScreen from './src/screens/ReportHazardScreen';
 import { WebSocketProvider, useWebSocket } from './src/contexts/WebSocketContext';
 import { LocationProvider } from './src/contexts/LocationContext';
+import ConnectivityBanner from './src/components/ConnectivityBanner';
+import PermissionBanner from './src/components/PermissionBanner';
+import SDKVersionWarning from './src/components/SDKVersionWarning';
+import { initSentry } from './src/utils/sentry';
+
+// Initialize Sentry on app startup (if configured)
+initSentry();
 
 const Stack = createStackNavigator();
 
@@ -25,50 +33,57 @@ function AppContent() {
 
   return (
     <LocationProvider vehicleId={vehicleId} sendVehiclePosition={sendVehiclePosition}>
-      <NavigationContainer
-        theme={{
-          dark: true,
-          colors: {
-            primary: COLORS.primary,
-            background: COLORS.background,
-            card: COLORS.card,
-            text: COLORS.text,
-            border: COLORS.border,
-            notification: COLORS.primary,
-          },
-        }}
-      >
-        <Stack.Navigator
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: COLORS.card,
-              borderBottomColor: COLORS.primary,
-              borderBottomWidth: 2,
-            },
-            headerTintColor: COLORS.primary,
-            headerTitleStyle: {
-              fontWeight: 'bold',
-              fontSize: 20,
+      <View style={styles.container}>
+        {/* Connectivity and permission banners */}
+        <ConnectivityBanner />
+        <PermissionBanner />
+        <SDKVersionWarning />
+        
+        <NavigationContainer
+          theme={{
+            dark: true,
+            colors: {
+              primary: COLORS.primary,
+              background: COLORS.background,
+              card: COLORS.card,
+              text: COLORS.text,
+              border: COLORS.border,
+              notification: COLORS.primary,
             },
           }}
         >
-          <Stack.Screen 
-            name="FleetDashboard" 
-            component={FleetDashboard}
-            options={{ title: 'Fleet Dashboard' }}
-          />
-          <Stack.Screen 
-            name="Navigation" 
-            component={NavigationScreen}
-            options={{ title: 'Navigation' }}
-          />
-          <Stack.Screen 
-            name="ReportHazard" 
-            component={ReportHazardScreen}
-            options={{ title: 'Report Hazard' }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
+          <Stack.Navigator
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: COLORS.card,
+                borderBottomColor: COLORS.primary,
+                borderBottomWidth: 2,
+              },
+              headerTintColor: COLORS.primary,
+              headerTitleStyle: {
+                fontWeight: 'bold',
+                fontSize: 20,
+              },
+            }}
+          >
+            <Stack.Screen 
+              name="FleetDashboard" 
+              component={FleetDashboard}
+              options={{ title: 'Fleet Dashboard' }}
+            />
+            <Stack.Screen 
+              name="Navigation" 
+              component={NavigationScreen}
+              options={{ title: 'Navigation' }}
+            />
+            <Stack.Screen 
+              name="ReportHazard" 
+              component={ReportHazardScreen}
+              options={{ title: 'Report Hazard' }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </View>
     </LocationProvider>
   );
 }
@@ -80,3 +95,9 @@ export default function App() {
     </WebSocketProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
