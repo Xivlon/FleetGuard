@@ -39,6 +39,11 @@ export async function watchPosition(onPositionUpdate) {
       distanceInterval: 5, // Or every 5 meters
     },
     (location) => {
+      console.log('[Location] Position update:', {
+        lat: location.coords.latitude.toFixed(6),
+        lon: location.coords.longitude.toFixed(6),
+        accuracy: location.coords.accuracy?.toFixed(2),
+      });
       onPositionUpdate(location);
     }
   );
