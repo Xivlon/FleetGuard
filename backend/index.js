@@ -3,10 +3,18 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const WebSocket = require('ws');
-const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
+const graphhopperClient = require('./graphhopperClient');
 
-const GRAPH_HOPPER_URL = 'https://graphhopper.com/api/1/route';
+// Validate GRAPHHOPPER_API_KEY in production
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const GRAPHHOPPER_API_KEY = process.env.GRAPHHOPPER_API_KEY;
+
+if (NODE_ENV === 'production' && !GRAPHHOPPER_API_KEY) {
+  console.error('FATAL: GRAPHHOPPER_API_KEY environment variable is required in production');
+  console.error('Please set GRAPHHOPPER_API_KEY in your Render environment variables');
+  process.exit(1);
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -133,7 +141,7 @@ wss.on('connection', (ws, req) => {
       
       // Handle new vehicle:position message format
       if (data.type === 'vehicle:position') {
-        const { vehicleId, latitude, longitude, speed, heading, timestamp } = data.payload;
+        const { vehicleId, latitude, longitude, speed, heading } = data.payload;
         
         // Update vehicle state
         const vehicle = vehicles.get(vehicleId) || {
@@ -190,7 +198,11 @@ const keepaliveInterval = setInterval(() => {
   });
 }, WS_PING_INTERVAL_MS);
 
-console.log('GraphHopper API Key configured:', !!process.env.GRAPHHOPPER_API_KEY);
+console.log('GraphHopper API Key configured:', !!GRAPHHOPPER_API_KEY);
+if (GRAPHHOPPER_API_KEY) {
+  // Security: API key is masked via graphhopperClient.maskApiKey() before logging
+  console.log('GraphHopper API Key (masked):', graphhopperClient.maskApiKey(GRAPHHOPPER_API_KEY));
+}
 
 /**
  * Get last known position for a vehicle
@@ -206,18 +218,6 @@ function getLastVehiclePosition(vehicleId) {
     };
   }
   return null;
-}
-
-function buildGraphHopperParams(start, end, apiKey, { instructions = true, profile = 'car' } = {}) {
-  const params = new URLSearchParams();
-  params.append('point', `${start.latitude},${start.longitude}`);
-  params.append('point', `${end.latitude},${end.longitude}`);
-  params.set('profile', profile);
-  params.set('points_encoded', 'false');
-  params.set('instructions', instructions ? 'true' : 'false');
-  params.set('locale', 'en');
-  params.set('key', apiKey);
-  return params;
 }
 
 app.get('/api/hazards', (req, res) => {
@@ -357,23 +357,20 @@ app.post('/api/routes/calculate', async (req, res) => {
       return res.status(400).json({ error: 'Invalid start or end coordinates' });
     }
 
-    const apiKey = process.env.GRAPHHOPPER_API_KEY;
-    
-    console.log('GraphHopper API Key configured:', !!apiKey);
-
     let routeData;
     let usingFallback = false;
     
-    if (apiKey) {
+    if (GRAPHHOPPER_API_KEY) {
       try {
-        const params = buildGraphHopperParams(start, end, apiKey, { instructions: true, profile: 'car' });
-        const response = await axios.get(`${GRAPH_HOPPER_URL}?${params.toString()}`, { timeout: 10000 });
-        routeData = response.data;
+        // Use the new GraphHopper client with retry logic
+        routeData = await graphhopperClient.calculateRoute(start, end, GRAPHHOPPER_API_KEY, {
+          profile: 'car',
+          instructions: true
+        });
         console.log('GraphHopper API Success - Using real routing');
         console.log('Route points received:', routeData.paths?.[0]?.points?.coordinates?.length || 0);
       } catch (apiError) {
-        console.log('GraphHopper API failed, using fallback:', apiError.message);
-        console.log('Status:', apiError.response?.status, 'Response:', apiError.response?.data);
+        console.log('GraphHopper API failed after retries, using fallback:', apiError.message);
         routeData = generateFallbackRoute(start, end);
         usingFallback = true;
       }
@@ -705,19 +702,19 @@ function checkOffRoute(vehicleId, position) {
 }
 
 async function recalculateRouteForVehicle(vehicleId, start, end) {
-  const apiKey = process.env.GRAPHHOPPER_API_KEY;
   let routeData;
   let usingFallback = false;
   
   try {
-    if (apiKey) {
+    if (GRAPHHOPPER_API_KEY) {
       try {
-        const params = buildGraphHopperParams(start, end, apiKey, { instructions: true, profile: 'car' });
-        const response = await axios.get(`${GRAPH_HOPPER_URL}?${params.toString()}`, { timeout: 10000 });
-        routeData = response.data;
+        // Use the new GraphHopper client with retry logic
+        routeData = await graphhopperClient.calculateRoute(start, end, GRAPHHOPPER_API_KEY, {
+          profile: 'car',
+          instructions: true
+        });
       } catch (apiError) {
         console.log('GraphHopper API failed during recalculation, using fallback:', apiError.message);
-        console.log('Status:', apiError.response?.status, 'Response:', apiError.response?.data);
         routeData = generateFallbackRoute(start, end);
         usingFallback = true;
       }
@@ -825,21 +822,14 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/routing-status', async (req, res) => {
-  const configured = !!process.env.GRAPHHOPPER_API_KEY;
+  const configured = !!GRAPHHOPPER_API_KEY;
   if (!configured) {
     return res.json({ configured: false, provider: 'graphhopper', reachable: false, message: 'No GRAPHHOPPER_API_KEY configured' });
   }
 
   try {
-    // lightweight test: calculate a tiny route between two close points
-    const sampleStart = { latitude: 37.7749, longitude: -122.4194 };
-    const sampleEnd = { latitude: 37.7849, longitude: -122.4094 };
-
-    const params = buildGraphHopperParams(sampleStart, sampleEnd, process.env.GRAPHHOPPER_API_KEY, { instructions: false, profile: 'car' });
-    const response = await axios.get(`${GRAPH_HOPPER_URL}?${params.toString()}`, { timeout: 5000 });
-
-    const pointCount = response.data.paths?.[0]?.points?.coordinates?.length || 0;
-    return res.json({ configured: true, provider: 'graphhopper', reachable: true, points: pointCount });
+    const result = await graphhopperClient.testReachability(GRAPHHOPPER_API_KEY);
+    return res.json({ configured: true, provider: 'graphhopper', ...result });
   } catch (error) {
     const errorDetails = {
       message: error.message,
@@ -850,9 +840,49 @@ app.get('/api/routing-status', async (req, res) => {
   }
 });
 
+app.get('/readyz', async (req, res) => {
+  // Basic health check
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  };
+  
+  // Check GraphHopper reachability if API key is configured
+  if (GRAPHHOPPER_API_KEY) {
+    try {
+      const result = await graphhopperClient.testReachability(GRAPHHOPPER_API_KEY);
+      if (result.reachable) {
+        health.graphhopper = 'ready';
+        return res.status(200).json(health);
+      } else {
+        health.graphhopper = 'unreachable';
+        health.graphhopperMessage = result.message;
+        return res.status(503).json(health);
+      }
+    } catch (error) {
+      health.graphhopper = 'error';
+      health.graphhopperMessage = error.message;
+      return res.status(503).json(health);
+    }
+  } else {
+    // In non-production without API key, still return ready (will use fallback)
+    if (NODE_ENV !== 'production') {
+      health.graphhopper = 'not_configured';
+      health.message = 'Running in fallback mode';
+      return res.status(200).json(health);
+    }
+    // In production, this should never happen due to startup check
+    health.graphhopper = 'missing_key';
+    return res.status(503).json(health);
+  }
+});
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Fleet Navigation Backend running on port ${PORT}`);
   console.log(`WebSocket server ready for connections`);
+  console.log(`Environment: ${NODE_ENV}`);
+  // Security: API key is masked via graphhopperClient.maskApiKey() before logging
+  console.log(`GraphHopper API Key: ${GRAPHHOPPER_API_KEY ? `Configured (${graphhopperClient.maskApiKey(GRAPHHOPPER_API_KEY)})` : 'Not configured (using fallback routing)'}`);
   console.log(`GraphHopper API Key: ${process.env.GRAPHHOPPER_API_KEY ? 'Configured' : 'Not configured (using fallback routing)'}`);
   console.log(`WebSocket ping interval: ${WS_PING_INTERVAL_MS}ms (grace: ${WS_PING_GRACE_MULTIPLIER}x = ${WS_PING_INTERVAL_MS * WS_PING_GRACE_MULTIPLIER}ms)`);
   console.log(`Position broadcast throttle: ${POSITION_BROADCAST_MAX_PER_SEC} messages/sec per vehicle`);
