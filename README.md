@@ -194,6 +194,44 @@ You can modify these coordinates or use actual GPS location data in production.
 - React Native Maps
 - WebSocket client
 
+## Connectivity & Diagnostics Features
+
+### Connectivity Diagnostics
+
+The app includes built-in connectivity diagnostics to help developers and users identify network issues:
+
+- **Offline Detection**: Displays a dismissible banner when the backend connection is lost
+- **VPN/LAN Detection**: After multiple failed connection attempts, suggests using Expo Tunnel mode for VPN environments
+- **Action Buttons**: Provides "Retry" and "Switch to Tunnel Mode" options directly in the UI
+
+### SDK Version Guard
+
+The app checks installed package versions against Expo's bundled native modules on startup:
+
+- Compares critical packages (expo-location, react-native-maps, etc.) with expected versions
+- Shows a non-blocking warning banner if versions are out of range
+- Provides guidance to run `npx expo install --fix` to resolve conflicts
+
+### Enhanced Permission UX
+
+Improved location permission handling:
+
+- **Permission Banner**: Shows when location permissions are denied
+- **Retry Action**: Allows users to retry permission request
+- **Open Settings**: Direct link to device settings to manually grant permissions
+- Reuses the existing live-location flow from LocationContext
+
+### Telemetry (Optional)
+
+Sentry integration for crash reporting and error tracking:
+
+- **Configuration**: Sentry DSN is read from `app.json` extra config (no secrets in code)
+- **Sampling**: Higher sampling rates in development (100%) vs production (50%)
+- **Privacy**: Automatically filters sensitive data (cookies, headers)
+- **Manual Capture**: Utility functions for capturing exceptions and messages
+
+See [SENTRY_CONFIGURATION.md](SENTRY_CONFIGURATION.md) for setup instructions.
+
 ## Future Enhancements
 
 - Offline map caching
