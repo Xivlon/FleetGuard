@@ -5,6 +5,16 @@ const http = require('http');
 const WebSocket = require('ws');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const {
+  routeCalculationSchema,
+  vehiclePositionSchema,
+  hazardSchema,
+  vehicleSchema,
+  validateRequest,
+  validateWebSocketPayload
+} = require('./validation');
 
 const GRAPH_HOPPER_URL = 'https://graphhopper.com/api/1/route';
 
@@ -12,18 +22,46 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: '/ws' });
 
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false
+}));
+
+// CORS configuration from environment variable
+const corsOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:3000', 'http://localhost:19006', 'exp://localhost:19000'];
+
 app.use(cors({
-  origin: [
-    "https://fleetguard.onrender.com",
-    "http://localhost:3000",
-    "exp://your-expo-app",
-    "http://172.16.6.175:5000"
-  ],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+    
+    if (corsOrigins.indexOf(origin) !== -1 || corsOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
+
 app.use(express.json());
 
+// Rate limiting for route calculations
+const routeRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: { error: 'Too many route calculation requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Use vehicleId from body if available, fall back to IP
+  skip: (req) => false
+});
+
 const PORT = process.env.PORT || 5000;
+const COMMIT_SHA = process.env.COMMIT_SHA || 'unknown';
+const BUILD_TIME = process.env.BUILD_TIME || new Date().toISOString();
 
 // Off-route detection configuration
 const OFF_ROUTE_DISTANCE_M = parseFloat(process.env.OFF_ROUTE_DISTANCE_M) || 50;
@@ -88,9 +126,20 @@ wss.on('connection', (ws, req) => {
         });
       }
       
-      // Handle new vehicle:position message format
+      // Handle new vehicle:position message format with validation
       if (data.type === 'vehicle:position') {
-        const { vehicleId, latitude, longitude, speed, heading, timestamp } = data.payload;
+        const validation = validateWebSocketPayload(vehiclePositionSchema, data.payload);
+        
+        if (!validation.valid) {
+          console.error('Invalid vehicle:position payload:', validation.error);
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: `Validation failed: ${validation.error}`
+          }));
+          return;
+        }
+        
+        const { vehicleId, latitude, longitude, speed, heading } = validation.data;
         
         // Update vehicle state
         const vehicle = vehicles.get(vehicleId) || {
@@ -109,7 +158,7 @@ wss.on('connection', (ws, req) => {
         // Broadcast position to all clients
         broadcastToClients({
           type: 'vehicle:position',
-          payload: data.payload
+          payload: validation.data
         });
         
         // Check for off-route condition
@@ -117,6 +166,10 @@ wss.on('connection', (ws, req) => {
       }
     } catch (error) {
       console.error('WebSocket message error:', error);
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Invalid message format'
+      }));
     }
   });
 
@@ -186,12 +239,8 @@ app.get('/api/hazards', (req, res) => {
   res.json(filteredHazards);
 });
 
-app.post('/api/hazards', (req, res) => {
-  const { type, location, description, severity, reportedBy } = req.body;
-
-  if (!type || !location || !location.latitude || !location.longitude) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
+app.post('/api/hazards', validateRequest(hazardSchema), (req, res) => {
+  const { type, location, description, severity, reportedBy } = req.validatedBody;
 
   const hazard = {
     id: uuidv4(),
@@ -254,8 +303,8 @@ app.get('/api/vehicles/:vehicleId/last-position', (req, res) => {
   });
 });
 
-app.post('/api/vehicles', (req, res) => {
-  const { name, location } = req.body;
+app.post('/api/vehicles', validateRequest(vehicleSchema), (req, res) => {
+  const { name, location } = req.validatedBody;
   
   const vehicle = {
     id: uuidv4(),
@@ -286,9 +335,9 @@ app.get('/api/routes/:vehicleId', (req, res) => {
   }
 });
 
-app.post('/api/routes/calculate', async (req, res) => {
+app.post('/api/routes/calculate', routeRateLimiter, validateRequest(routeCalculationSchema), async (req, res) => {
   try {
-    let { start, end, vehicleId } = req.body;
+    let { start, end, vehicleId } = req.validatedBody;
 
     // Allow start to be omitted if vehicleId is provided
     if (!start && vehicleId) {
@@ -299,10 +348,6 @@ app.post('/api/routes/calculate', async (req, res) => {
         });
       }
       console.log('Using last known position for vehicle:', vehicleId, 'at coordinates:', start.latitude.toFixed(4), start.longitude.toFixed(4));
-    }
-
-    if (!start || !end || !start.latitude || !start.longitude || !end.latitude || !end.longitude) {
-      return res.status(400).json({ error: 'Invalid start or end coordinates' });
     }
 
     const apiKey = process.env.GRAPHHOPPER_API_KEY;
@@ -377,7 +422,7 @@ app.post('/api/routes/calculate', async (req, res) => {
   } catch (error) {
     console.error('Route calculation error:', error.message);
     
-    const { start, end, vehicleId } = req.body;
+    const { start, end, vehicleId } = req.validatedBody;
     
     const route = {
       vehicleId: vehicleId || null,
@@ -758,6 +803,61 @@ app.get('/api/health', (req, res) => {
     hazards: hazards.size,
     routes: activeRoutes.size,
     timestamp: new Date().toISOString()
+  });
+});
+
+// Fast health check (no dependencies)
+app.get('/healthz', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Readiness check (includes dependency checks)
+app.get('/readyz', async (req, res) => {
+  const checks = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    checks: {
+      server: 'ok',
+      websocket: wss.clients.size >= 0 ? 'ok' : 'degraded',
+      graphhopper: 'unknown'
+    }
+  };
+
+  // Check GraphHopper availability if API key is configured
+  if (process.env.GRAPHHOPPER_API_KEY) {
+    try {
+      const sampleStart = { latitude: 37.7749, longitude: -122.4194 };
+      const sampleEnd = { latitude: 37.7849, longitude: -122.4094 };
+      const params = buildGraphHopperParams(sampleStart, sampleEnd, process.env.GRAPHHOPPER_API_KEY, { 
+        instructions: false, 
+        profile: 'car' 
+      });
+      
+      await axios.get(`${GRAPH_HOPPER_URL}?${params.toString()}`, { timeout: 5000 });
+      checks.checks.graphhopper = 'ok';
+    } catch (error) {
+      checks.checks.graphhopper = 'degraded';
+      checks.status = 'degraded';
+      checks.graphhopperError = error.message;
+    }
+  } else {
+    checks.checks.graphhopper = 'not_configured';
+  }
+
+  const statusCode = checks.status === 'ok' ? 200 : 503;
+  res.status(statusCode).json(checks);
+});
+
+// Version endpoint
+app.get('/version', (req, res) => {
+  res.json({
+    version: '1.0.0',
+    commitSha: COMMIT_SHA,
+    buildTime: BUILD_TIME,
+    nodeVersion: process.version
   });
 });
 
