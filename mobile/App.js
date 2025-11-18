@@ -5,6 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import FleetDashboard from './src/screens/FleetDashboard';
 import NavigationScreen from './src/screens/NavigationScreen';
 import ReportHazardScreen from './src/screens/ReportHazardScreen';
+import ReportObstacleScreen from './src/screens/ReportObstacleScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import AnalyticsScreen from './src/screens/AnalyticsScreen';
@@ -122,6 +123,11 @@ function AppContent() {
                   name="ReportHazard"
                   component={ReportHazardScreen}
                   options={{ title: 'Report Hazard' }}
+                />
+                <Stack.Screen
+                  name="ReportObstacle"
+                  component={ReportObstacleScreen}
+                  options={{ title: 'Report Obstacle' }}
                 />
                 <Stack.Screen
                   name="Analytics"
