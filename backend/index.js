@@ -26,7 +26,7 @@ const GRAPHHOPPER_API_KEY = process.env.GRAPHHOPPER_API_KEY;
 
 if (NODE_ENV === 'production' && !GRAPHHOPPER_API_KEY) {
   console.error('FATAL: GRAPHHOPPER_API_KEY environment variable is required in production');
-  console.error('Please set GRAPHHOPPER_API_KEY in your Render environment variables');
+  console.error('Please set GRAPHHOPPER_API_KEY in your deployment environment variables (Fly.io, Render, etc.)');
   process.exit(1);
 }
 
@@ -34,15 +34,23 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: '/ws' });
 
-app.use(cors({
-  origin: [
-    "https://fleetguard.onrender.com",
-    "http://localhost:3000",
-    "exp://your-expo-app",
-    "http://172.16.6.175:5000"
-  ],
-  credentials: true
-}));
+// Configure CORS based on environment
+const corsOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',')
+  : [
+      "https://fleetguard.onrender.com",
+      "http://localhost:3000",
+      "http://localhost:5000",
+      "exp://your-expo-app",
+      "http://172.16.6.175:5000"
+    ];
+
+// In development, allow all origins for easier testing
+const corsOptions = NODE_ENV === 'production'
+  ? { origin: corsOrigins, credentials: true }
+  : { origin: true, credentials: true };
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Register routes
