@@ -13,8 +13,7 @@
       "backgroundColor": "#000000"
     },
     "updates": {
-      "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/[your-project-id]"
+      "fallbackToCacheTimeout": 0
     },
     "assetBundlePatterns": [
       "**/*"
@@ -85,9 +84,7 @@
       "expo-secure-store"
     ],
     "extra": {
-      "sentryDsn": null,
-      "eas": {
-        "projectId": "[your-project-id]"
+      "sentryDsn": null"
       }
     },
     "owner": "[Partial_Circuit]",
