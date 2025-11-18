@@ -5,6 +5,17 @@ const http = require('http');
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const graphhopperClient = require('./graphhopperClient');
+const { testConnection, syncDatabase } = require('./models');
+const logger = require('./utils/logger');
+const { sendHazardAlert, sendRouteUpdate } = require('./services/notificationService');
+const { processUserQueue } = require('./services/offlineQueueService');
+
+// Import routes
+const authRoutes = require('./routes/auth');
+const fleetRoutes = require('./routes/fleets');
+const tripRoutes = require('./routes/trips');
+const analyticsRoutes = require('./routes/analytics');
+const notificationRoutes = require('./routes/notifications');
 
 // Validate GRAPHHOPPER_API_KEY in production
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -30,6 +41,13 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+
+// Register routes
+app.use('/api/auth', authRoutes);
+app.use('/api/fleets', fleetRoutes);
+app.use('/api/trips', tripRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 const PORT = process.env.PORT || 5000;
 
@@ -608,22 +626,23 @@ function getDirection(bearing) {
 
 async function checkRoutesForHazards(newHazard) {
   const HAZARD_PROXIMITY_METERS = 1000;
-  
+  const { User } = require('./models');
+
   activeRoutes.forEach(async (route, vehicleId) => {
     if (route.coordinates) {
       for (const coord of route.coordinates) {
-        const point = { 
+        const point = {
           latitude: coord.latitude,
           longitude: coord.longitude
         };
         const distance = calculateDistance(point, newHazard.location);
-        
+
         if (distance <= HAZARD_PROXIMITY_METERS) {
-          console.log(`Hazard detected on route for vehicle ${vehicleId}, recalculating...`);
-          
+          logger.info(`Hazard detected on route for vehicle ${vehicleId}, recalculating...`);
+
           try {
             const recalculatedRoute = await recalculateRouteForVehicle(vehicleId, route.start, route.end);
-            
+
             broadcastToClients({
               type: 'ROUTE_HAZARD_ALERT',
               vehicleId,
@@ -631,8 +650,18 @@ async function checkRoutesForHazards(newHazard) {
               distance,
               recalculatedRoute
             });
+
+            // Send push notification to driver
+            const user = await User.findOne({ where: { id: vehicleId } });
+            if (user && user.pushToken) {
+              try {
+                await sendHazardAlert(user.id, newHazard);
+              } catch (error) {
+                logger.error('Failed to send hazard alert notification:', error);
+              }
+            }
           } catch (error) {
-            console.error('Route recalculation failed:', error);
+            logger.error('Route recalculation failed:', error);
             broadcastToClients({
               type: 'ROUTE_HAZARD_ALERT',
               vehicleId,
@@ -877,16 +906,37 @@ app.get('/readyz', async (req, res) => {
   }
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Fleet Navigation Backend running on port ${PORT}`);
-  console.log(`WebSocket server ready for connections`);
-  console.log(`Environment: ${NODE_ENV}`);
-  // Security: API key is masked via graphhopperClient.maskApiKey() before logging
-  console.log(`GraphHopper API Key: ${GRAPHHOPPER_API_KEY ? `Configured (${graphhopperClient.maskApiKey(GRAPHHOPPER_API_KEY)})` : 'Not configured (using fallback routing)'}`);
-  console.log(`GraphHopper API Key: ${process.env.GRAPHHOPPER_API_KEY ? 'Configured' : 'Not configured (using fallback routing)'}`);
-  console.log(`WebSocket ping interval: ${WS_PING_INTERVAL_MS}ms (grace: ${WS_PING_GRACE_MULTIPLIER}x = ${WS_PING_INTERVAL_MS * WS_PING_GRACE_MULTIPLIER}ms)`);
-  console.log(`Position broadcast throttle: ${POSITION_BROADCAST_MAX_PER_SEC} messages/sec per vehicle`);
-});
+// Initialize database and start server
+async function startServer() {
+  try {
+    // Test database connection
+    logger.info('Testing database connection...');
+    const dbConnected = await testConnection();
+
+    if (dbConnected) {
+      // Sync database (create tables if they don't exist)
+      logger.info('Synchronizing database...');
+      await syncDatabase({ alter: NODE_ENV === 'development' });
+      logger.info('Database synchronized successfully');
+    } else {
+      logger.warn('Database not available, running in memory-only mode');
+    }
+
+    server.listen(PORT, '0.0.0.0', () => {
+      logger.info(`Fleet Navigation Backend running on port ${PORT}`);
+      logger.info(`WebSocket server ready for connections`);
+      logger.info(`Environment: ${NODE_ENV}`);
+      logger.info(`GraphHopper API Key: ${GRAPHHOPPER_API_KEY ? `Configured (${graphhopperClient.maskApiKey(GRAPHHOPPER_API_KEY)})` : 'Not configured (using fallback routing)'}`);
+      logger.info(`WebSocket ping interval: ${WS_PING_INTERVAL_MS}ms (grace: ${WS_PING_GRACE_MULTIPLIER}x = ${WS_PING_INTERVAL_MS * WS_PING_GRACE_MULTIPLIER}ms)`);
+      logger.info(`Position broadcast throttle: ${POSITION_BROADCAST_MAX_PER_SEC} messages/sec per vehicle`);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 // Cleanup keepalive on server shutdown
 wss.on('close', () => {
