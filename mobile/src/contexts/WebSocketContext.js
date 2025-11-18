@@ -20,6 +20,7 @@ const toWebSocketUrl = (url) => {
 export const WebSocketProvider = ({ children }) => {
   const [vehicles, setVehicles] = useState([]);
   const [hazards, setHazards] = useState([]);
+  const [obstacles, setObstacles] = useState([]);
   const [routes, setRoutes] = useState({});
   const [connected, setConnected] = useState(false);
   const [routeAlerts, setRouteAlerts] = useState([]);
@@ -56,6 +57,7 @@ export const WebSocketProvider = ({ children }) => {
             case 'INITIAL_DATA':
               setVehicles(data.vehicles || []);
               setHazards(data.hazards || []);
+              setObstacles(data.obstacles || []);
               setRoutes(data.routes || {});
               break;
               
@@ -117,6 +119,40 @@ export const WebSocketProvider = ({ children }) => {
                 setRoutes(prev => ({
                   ...prev,
                   [data.payload.vehicleId]: data.payload.route
+                }));
+              }
+              break;
+
+            case 'OBSTACLE_ADDED':
+              console.log('New obstacle reported:', data.obstacle);
+              setObstacles(prev => [...prev, data.obstacle]);
+              break;
+
+            case 'OBSTACLE_UPDATED':
+              console.log('Obstacle updated:', data.obstacle);
+              setObstacles(prev => prev.map(o =>
+                o.id === data.obstacle.id ? data.obstacle : o
+              ));
+              break;
+
+            case 'OBSTACLE_RESOLVED':
+              console.log('Obstacle resolved:', data.obstacleId);
+              setObstacles(prev => prev.filter(o => o.id !== data.obstacleId));
+              break;
+
+            case 'OBSTACLE_ROUTE_ALERT':
+              console.log('Obstacle detected on route:', data);
+              setRouteAlerts(prev => [...prev, {
+                vehicleId: data.vehicleId,
+                obstacle: data.obstacle,
+                distance: data.distance,
+                timestamp: new Date().toISOString()
+              }]);
+
+              if (data.recalculatedRoute) {
+                setRoutes(prev => ({
+                  ...prev,
+                  [data.vehicleId]: data.recalculatedRoute
                 }));
               }
               break;
@@ -212,6 +248,7 @@ export const WebSocketProvider = ({ children }) => {
     <WebSocketContext.Provider value={{
       vehicles,
       hazards,
+      obstacles,
       routes,
       routeAlerts,
       connected,

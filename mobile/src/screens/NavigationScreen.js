@@ -13,6 +13,8 @@ import MapView, { Marker, Polyline, UrlTile, PROVIDER_DEFAULT } from 'react-nati
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useLocation } from '../contexts/LocationContext';
 import { watchPosition, calculateHeading } from '../services/location';
+import TrafficOverlay from '../components/TrafficOverlay';
+import ObstacleMarkers from '../components/ObstacleMarkers';
 
 const COLORS = {
   primary: '#10B981',
@@ -42,7 +44,7 @@ const normalizeCoord = (coord) => {
 };
 
 export default function NavigationScreen({ navigation }) {
-  const { hazards, backendUrl, routes, sendVehiclePosition } = useWebSocket();
+  const { hazards, obstacles, backendUrl, routes, sendVehiclePosition } = useWebSocket();
   const { currentLocation, permissionStatus, requestPermissions, openSettings } = useLocation();
   const [startLat, setStartLat] = useState('37.7749');
   const [startLon, setStartLon] = useState('-122.4194');
@@ -153,6 +155,53 @@ export default function NavigationScreen({ navigation }) {
     };
   }, [route, followMe, vehicleId, sendVehiclePosition]);
 
+  // Auto-rerouting effect - monitors obstacles and traffic
+  useEffect(() => {
+    if (!route || isRerouting || !userLocation) return;
+
+    const checkAndReroute = async () => {
+      const routeObstacles = checkObstaclesOnRoute();
+      const hasSevereTraffic = checkSevereTrafficOnRoute();
+
+      // Only reroute if we have critical obstacles or severe traffic
+      const criticalObstacles = routeObstacles.filter(
+        o => o.severity === 'critical' || o.severity === 'high'
+      );
+
+      if (criticalObstacles.length > 0) {
+        Alert.alert(
+          'Route Obstacle Detected',
+          `${criticalObstacles.length} ${criticalObstacles.length > 1 ? 'obstacles' : 'obstacle'} detected on your route. Recalculating...`,
+          [{ text: 'OK' }]
+        );
+        setIsRerouting(true);
+
+        // Get destination from route
+        const destination = route.coordinates?.[route.coordinates.length - 1];
+        if (destination) {
+          const normalizedDest = normalizeCoord(destination);
+          await calculateRoute();
+        }
+      } else if (hasSevereTraffic) {
+        Alert.alert(
+          'Heavy Traffic Detected',
+          'Severe traffic detected on your route. Recalculating for faster route...',
+          [{ text: 'OK' }]
+        );
+        setIsRerouting(true);
+        await calculateRoute();
+      }
+    };
+
+    // Check every 30 seconds
+    const interval = setInterval(checkAndReroute, 30000);
+
+    // Also check immediately
+    checkAndReroute();
+
+    return () => clearInterval(interval);
+  }, [route, obstacles, userLocation, isRerouting]);
+
   const calculateRoute = async () => {
     // Check if we should use current location
     let startCoords;
@@ -227,13 +276,13 @@ export default function NavigationScreen({ navigation }) {
 
   const checkHazardsOnRoute = () => {
     if (!route) return [];
-    
+
     const routeHazards = [];
     hazards.forEach(hazard => {
       route.coordinates?.forEach(coord => {
         const normalized = normalizeCoord(coord);
         if (!normalized) return;
-        
+
         const distance = calculateDistance(
           normalized,
           hazard.location
@@ -243,10 +292,47 @@ export default function NavigationScreen({ navigation }) {
         }
       });
     });
-    
-    return routeHazards.filter((h, i, arr) => 
+
+    return routeHazards.filter((h, i, arr) =>
       arr.findIndex(x => x.id === h.id) === i
     );
+  };
+
+  const checkObstaclesOnRoute = () => {
+    if (!route || !obstacles) return [];
+
+    const routeObstacles = [];
+    obstacles.forEach(obstacle => {
+      if (obstacle.status !== 'active') return;
+
+      route.coordinates?.forEach(coord => {
+        const normalized = normalizeCoord(coord);
+        if (!normalized) return;
+
+        const distance = calculateDistance(
+          normalized,
+          obstacle.location
+        );
+        if (distance <= (obstacle.radius || 100)) {
+          routeObstacles.push({ ...obstacle, distance });
+        }
+      });
+    });
+
+    return routeObstacles.filter((o, i, arr) =>
+      arr.findIndex(x => x.id === o.id) === i
+    );
+  };
+
+  const checkSevereTrafficOnRoute = () => {
+    if (!route || !route.trafficData) return false;
+
+    // Check if more than 30% of route segments have severe or heavy traffic
+    const severeSegments = route.trafficData.filter(
+      segment => segment.congestionLevel === 'severe' || segment.congestionLevel === 'heavy'
+    );
+
+    return severeSegments.length > route.trafficData.length * 0.3;
   };
 
   const calculateDistance = (point1, point2) => {
@@ -265,6 +351,7 @@ export default function NavigationScreen({ navigation }) {
   };
 
   const routeHazards = route ? checkHazardsOnRoute() : [];
+  const routeObstaclesOnPath = route ? checkObstaclesOnRoute() : [];
 
   const mapRegion = route ? {
     latitude: (parseFloat(startLat) + parseFloat(endLat)) / 2,
@@ -402,6 +489,16 @@ export default function NavigationScreen({ navigation }) {
               ⚠️ {routeHazards.length} hazard(s) on route
             </Text>
           )}
+          {routeObstaclesOnPath.length > 0 && (
+            <Text style={styles.warningText}>
+              🚧 {routeObstaclesOnPath.length} obstacle(s) on path
+            </Text>
+          )}
+          {route.trafficData && route.trafficData.length > 0 && (
+            <Text style={styles.routeInfoText}>
+              🚦 Traffic data available
+            </Text>
+          )}
         </View>
       )}
 
@@ -473,6 +570,26 @@ export default function NavigationScreen({ navigation }) {
               pinColor="#EF4444"
             />
           ))}
+
+          {/* Traffic Overlay */}
+          {route && route.trafficData && (
+            <TrafficOverlay trafficData={route.trafficData} visible={true} />
+          )}
+
+          {/* Obstacle Markers with Red Zones */}
+          <ObstacleMarkers
+            obstacles={obstacles || []}
+            onObstaclePress={(obstacle) => {
+              Alert.alert(
+                `${obstacle.type.replace('_', ' ')} - ${obstacle.severity}`,
+                obstacle.description || 'No description available',
+                [
+                  { text: 'OK' },
+                  { text: 'Report Location Issue', onPress: () => navigation.navigate('ReportObstacle') }
+                ]
+              );
+            }}
+          />
         </MapView>
 
         {route && (

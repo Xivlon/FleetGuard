@@ -5,6 +5,20 @@ const http = require('http');
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const graphhopperClient = require('./graphhopperClient');
+const { testConnection, syncDatabase } = require('./models');
+const logger = require('./utils/logger');
+const { sendHazardAlert, sendRouteUpdate } = require('./services/notificationService');
+const { processUserQueue } = require('./services/offlineQueueService');
+const { getTrafficForRoute } = require('./services/trafficService');
+const obstacleService = require('./services/obstacleService');
+
+// Import routes
+const authRoutes = require('./routes/auth');
+const fleetRoutes = require('./routes/fleets');
+const tripRoutes = require('./routes/trips');
+const analyticsRoutes = require('./routes/analytics');
+const notificationRoutes = require('./routes/notifications');
+const obstaclesRoutes = require('./routes/obstacles');
 
 // Validate GRAPHHOPPER_API_KEY in production
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -12,7 +26,7 @@ const GRAPHHOPPER_API_KEY = process.env.GRAPHHOPPER_API_KEY;
 
 if (NODE_ENV === 'production' && !GRAPHHOPPER_API_KEY) {
   console.error('FATAL: GRAPHHOPPER_API_KEY environment variable is required in production');
-  console.error('Please set GRAPHHOPPER_API_KEY in your Render environment variables');
+  console.error('Please set GRAPHHOPPER_API_KEY in your deployment environment variables (Fly.io, Render, etc.)');
   process.exit(1);
 }
 
@@ -20,16 +34,32 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: '/ws' });
 
-app.use(cors({
-  origin: [
-    "https://fleetguard.onrender.com",
-    "http://localhost:3000",
-    "exp://your-expo-app",
-    "http://172.16.6.175:5000"
-  ],
-  credentials: true
-}));
+// Configure CORS based on environment
+const corsOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',')
+  : [
+      "https://fleetguard.onrender.com",
+      "http://localhost:3000",
+      "http://localhost:5000",
+      "exp://your-expo-app",
+      "http://172.16.6.175:5000"
+    ];
+
+// In development, allow all origins for easier testing
+const corsOptions = NODE_ENV === 'production'
+  ? { origin: corsOrigins, credentials: true }
+  : { origin: true, credentials: true };
+
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// Register routes
+app.use('/api/auth', authRoutes);
+app.use('/api/fleets', fleetRoutes);
+app.use('/api/trips', tripRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/obstacles', obstaclesRoutes);
 
 const PORT = process.env.PORT || 5000;
 
@@ -107,12 +137,36 @@ wss.on('connection', (ws, req) => {
     ws.lastPingTime = Date.now();
   });
   
-  ws.send(JSON.stringify({
-    type: 'INITIAL_DATA',
-    hazards: Array.from(hazards.values()),
-    vehicles: Array.from(vehicles.values()),
-    routes: Array.from(activeRoutes.values())
-  }));
+  // Fetch active obstacles from database
+  const sendInitialData = async () => {
+    try {
+      const { Obstacle } = require('./models');
+      const activeObstacles = await Obstacle.findAll({
+        where: { status: 'active' },
+        include: [{ model: require('./models').User, as: 'reporter', attributes: ['id', 'firstName', 'lastName'] }]
+      });
+
+      ws.send(JSON.stringify({
+        type: 'INITIAL_DATA',
+        hazards: Array.from(hazards.values()),
+        vehicles: Array.from(vehicles.values()),
+        routes: Array.from(activeRoutes.values()),
+        obstacles: activeObstacles.map(o => o.toJSON())
+      }));
+    } catch (error) {
+      logger.error('Error sending initial data:', error);
+      // Send without obstacles if there's an error
+      ws.send(JSON.stringify({
+        type: 'INITIAL_DATA',
+        hazards: Array.from(hazards.values()),
+        vehicles: Array.from(vehicles.values()),
+        routes: Array.from(activeRoutes.values()),
+        obstacles: []
+      }));
+    }
+  };
+
+  sendInitialData();
 
   ws.on('message', (message) => {
     try {
@@ -180,6 +234,9 @@ wss.on('connection', (ws, req) => {
     console.log(`Connected clients: ${connectedClientsCount}`);
   });
 });
+
+// Set broadcast function for obstacle service
+obstacleService.setBroadcastFunction(broadcastToClients);
 
 // Ping/pong keepalive with configurable interval
 const keepaliveInterval = setInterval(() => {
@@ -394,14 +451,65 @@ app.post('/api/routes/calculate', async (req, res) => {
       coordinates = generateStraightLine(start, end);
     }
 
+    // Get traffic data for route
+    let trafficData = [];
+    let trafficDelay = 0;
+    try {
+      if (req.query.includeTraffic !== 'false' && coordinates.length > 1) {
+        trafficData = await getTrafficForRoute(coordinates);
+        trafficDelay = trafficData.reduce((sum, segment) => sum + (segment.delay || 0), 0);
+        logger.info(`Traffic data fetched: ${trafficData.length} segments, ${trafficDelay}s total delay`);
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch traffic data:', error.message);
+    }
+
+    // Check for obstacles on route
+    const { Obstacle } = require('./models');
+    let obstaclesOnRoute = [];
+    try {
+      const activeObstacles = await Obstacle.findAll({
+        where: { status: 'active' }
+      });
+
+      obstaclesOnRoute = activeObstacles.filter(obstacle => {
+        return coordinates.some(coord => {
+          const distance = calculateDistance(coord, obstacle.location);
+          return distance <= obstacle.radius;
+        });
+      });
+
+      if (obstaclesOnRoute.length > 0) {
+        logger.info(`Found ${obstaclesOnRoute.length} obstacles on route`);
+      }
+    } catch (error) {
+      logger.warn('Failed to check obstacles:', error.message);
+    }
+
     const route = {
       vehicleId: vehicleId || null,
       start,
       end,
       distance: routeData.paths?.[0]?.distance,
-      duration: routeData.paths?.[0]?.time,
+      duration: (routeData.paths?.[0]?.time || 0) + (trafficDelay * 1000),
+      baseTime: routeData.paths?.[0]?.time,
+      trafficDelay: trafficDelay * 1000,
       coordinates: coordinates, // This should now be [{latitude, longitude}, {latitude, longitude}, ...]
       instructions: routeData.paths?.[0]?.instructions,
+      trafficData: trafficData.map(t => ({
+        segmentId: t.segmentId,
+        congestionLevel: t.congestionLevel,
+        currentSpeed: t.currentSpeed,
+        delay: t.delay
+      })),
+      obstacles: obstaclesOnRoute.map(o => ({
+        id: o.id,
+        type: o.type,
+        location: o.location,
+        severity: o.severity,
+        radius: o.radius,
+        description: o.description
+      })),
       timestamp: new Date().toISOString(),
       fallback: usingFallback
     };
@@ -608,22 +716,23 @@ function getDirection(bearing) {
 
 async function checkRoutesForHazards(newHazard) {
   const HAZARD_PROXIMITY_METERS = 1000;
-  
+  const { User } = require('./models');
+
   activeRoutes.forEach(async (route, vehicleId) => {
     if (route.coordinates) {
       for (const coord of route.coordinates) {
-        const point = { 
+        const point = {
           latitude: coord.latitude,
           longitude: coord.longitude
         };
         const distance = calculateDistance(point, newHazard.location);
-        
+
         if (distance <= HAZARD_PROXIMITY_METERS) {
-          console.log(`Hazard detected on route for vehicle ${vehicleId}, recalculating...`);
-          
+          logger.info(`Hazard detected on route for vehicle ${vehicleId}, recalculating...`);
+
           try {
             const recalculatedRoute = await recalculateRouteForVehicle(vehicleId, route.start, route.end);
-            
+
             broadcastToClients({
               type: 'ROUTE_HAZARD_ALERT',
               vehicleId,
@@ -631,8 +740,18 @@ async function checkRoutesForHazards(newHazard) {
               distance,
               recalculatedRoute
             });
+
+            // Send push notification to driver
+            const user = await User.findOne({ where: { id: vehicleId } });
+            if (user && user.pushToken) {
+              try {
+                await sendHazardAlert(user.id, newHazard);
+              } catch (error) {
+                logger.error('Failed to send hazard alert notification:', error);
+              }
+            }
           } catch (error) {
-            console.error('Route recalculation failed:', error);
+            logger.error('Route recalculation failed:', error);
             broadcastToClients({
               type: 'ROUTE_HAZARD_ALERT',
               vehicleId,
@@ -877,16 +996,37 @@ app.get('/readyz', async (req, res) => {
   }
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Fleet Navigation Backend running on port ${PORT}`);
-  console.log(`WebSocket server ready for connections`);
-  console.log(`Environment: ${NODE_ENV}`);
-  // Security: API key is masked via graphhopperClient.maskApiKey() before logging
-  console.log(`GraphHopper API Key: ${GRAPHHOPPER_API_KEY ? `Configured (${graphhopperClient.maskApiKey(GRAPHHOPPER_API_KEY)})` : 'Not configured (using fallback routing)'}`);
-  console.log(`GraphHopper API Key: ${process.env.GRAPHHOPPER_API_KEY ? 'Configured' : 'Not configured (using fallback routing)'}`);
-  console.log(`WebSocket ping interval: ${WS_PING_INTERVAL_MS}ms (grace: ${WS_PING_GRACE_MULTIPLIER}x = ${WS_PING_INTERVAL_MS * WS_PING_GRACE_MULTIPLIER}ms)`);
-  console.log(`Position broadcast throttle: ${POSITION_BROADCAST_MAX_PER_SEC} messages/sec per vehicle`);
-});
+// Initialize database and start server
+async function startServer() {
+  try {
+    // Test database connection
+    logger.info('Testing database connection...');
+    const dbConnected = await testConnection();
+
+    if (dbConnected) {
+      // Sync database (create tables if they don't exist)
+      logger.info('Synchronizing database...');
+      await syncDatabase({ alter: NODE_ENV === 'development' });
+      logger.info('Database synchronized successfully');
+    } else {
+      logger.warn('Database not available, running in memory-only mode');
+    }
+
+    server.listen(PORT, '0.0.0.0', () => {
+      logger.info(`Fleet Navigation Backend running on port ${PORT}`);
+      logger.info(`WebSocket server ready for connections`);
+      logger.info(`Environment: ${NODE_ENV}`);
+      logger.info(`GraphHopper API Key: ${GRAPHHOPPER_API_KEY ? `Configured (${graphhopperClient.maskApiKey(GRAPHHOPPER_API_KEY)})` : 'Not configured (using fallback routing)'}`);
+      logger.info(`WebSocket ping interval: ${WS_PING_INTERVAL_MS}ms (grace: ${WS_PING_GRACE_MULTIPLIER}x = ${WS_PING_INTERVAL_MS * WS_PING_GRACE_MULTIPLIER}ms)`);
+      logger.info(`Position broadcast throttle: ${POSITION_BROADCAST_MAX_PER_SEC} messages/sec per vehicle`);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 // Cleanup keepalive on server shutdown
 wss.on('close', () => {
