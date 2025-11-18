@@ -87,9 +87,7 @@
       "sentryDsn": null"
       }
     },
-    "owner": "[Partial_Circuit]",
     "runtimeVersion": {
       "policy": "sdkVersion"
     }
   }
-}
