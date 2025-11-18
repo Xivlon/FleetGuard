@@ -1,5 +1,5 @@
 {
-  "name": "FleetNav",
+  "name": "fleetguard",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -10,6 +10,16 @@
     "web": "expo start --web",
     "start:lan": "expo start --lan",
     "start:tunnel": "expo start --tunnel",
+    "build:development:ios": "eas build --profile development --platform ios",
+    "build:development:android": "eas build --profile development --platform android",
+    "build:preview:ios": "eas build --profile preview --platform ios",
+    "build:preview:android": "eas build --profile preview --platform android",
+    "build:production:ios": "eas build --profile production --platform ios",
+    "build:production:android": "eas build --profile production --platform android",
+    "build:all:preview": "eas build --profile preview --platform all",
+    "build:all:production": "eas build --profile production --platform all",
+    "submit:ios": "eas submit --platform ios",
+    "submit:android": "eas submit --platform android",
     "lint": "eslint . --ext .js,.jsx",
     "lint:fix": "eslint . --ext .js,.jsx --fix",
     "test": "echo \"No tests yet\" && exit 0"
@@ -23,6 +33,7 @@
     "axios": "^1.12.2",
     "cors": "^2.8.5",
     "expo": "^54.0.13",
+    "expo-dev-client": "~6.0.3",
     "expo-location": "~19.0.7",
     "expo-notifications": "^0.32.13",
     "expo-secure-store": "^15.0.7",
