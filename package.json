@@ -4,6 +4,12 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "npm run dev --workspace=backend",
+    "mobile": "cd mobile && npx expo start",
+    "mobile:clear": "cd mobile && npx expo start --clear",
+    "mobile:android": "cd mobile && npx expo start --android",
+    "mobile:ios": "cd mobile && npx expo start --ios",
+    "mobile:web": "cd mobile && npx expo start --web",
+    "mobile:tunnel": "cd mobile && npx expo start --tunnel",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
     "prepare": "husky"
