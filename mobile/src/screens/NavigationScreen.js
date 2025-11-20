@@ -73,6 +73,7 @@ export default function NavigationScreen({ navigation }) {
   const [waypointModalVisible, setWaypointModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [dangerAlertShown, setDangerAlertShown] = useState(new Set());
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const mapRef = useRef(null);
   const lastPositionRef = useRef(null);
   const initialCameraSetRef = useRef(false);
@@ -319,6 +320,7 @@ export default function NavigationScreen({ navigation }) {
       
       setRoute(data);
       setCurrentStep(0);
+      setIsFullScreen(true); // Enter fullscreen when route is calculated
       
       if (data.fallback) {
         Alert.alert(
@@ -498,37 +500,40 @@ export default function NavigationScreen({ navigation }) {
   return (
     <View style={styles.container}>
       {/* Location Status Indicator */}
-      <View style={styles.locationStatusBar}>
-        <View style={styles.locationStatusContent}>
-          <Text style={styles.locationStatusText}>
-            📍 Location: {
-              permissionStatus === 'checking' ? 'Checking...' :
-              permissionStatus === 'granted' && currentLocation ? 'Active' :
-              permissionStatus === 'granted' && !currentLocation ? 'Searching...' :
-              permissionStatus === 'denied' ? 'Denied' :
-              'Unavailable'
-            }
-          </Text>
-          {permissionStatus === 'denied' && (
-            <View style={styles.permissionActions}>
-              <TouchableOpacity
-                style={styles.permissionButton}
-                onPress={openSettings}
-              >
-                <Text style={styles.permissionButtonText}>Settings</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.permissionButton}
-                onPress={requestPermissions}
-              >
-                <Text style={styles.permissionButtonText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+      {!isFullScreen && (
+        <View style={styles.locationStatusBar}>
+          <View style={styles.locationStatusContent}>
+            <Text style={styles.locationStatusText}>
+              📍 Location: {
+                permissionStatus === 'checking' ? 'Checking...' :
+                permissionStatus === 'granted' && currentLocation ? 'Active' :
+                permissionStatus === 'granted' && !currentLocation ? 'Searching...' :
+                permissionStatus === 'denied' ? 'Denied' :
+                'Unavailable'
+              }
+            </Text>
+            {permissionStatus === 'denied' && (
+              <View style={styles.permissionActions}>
+                <TouchableOpacity
+                  style={styles.permissionButton}
+                  onPress={openSettings}
+                >
+                  <Text style={styles.permissionButtonText}>Settings</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.permissionButton}
+                  onPress={requestPermissions}
+                >
+                  <Text style={styles.permissionButtonText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
+      )}
 
-      <View style={styles.inputContainer}>
+      {!isFullScreen && (
+        <View style={styles.inputContainer}>
         {/* Toggle for using my location */}
         <View style={styles.toggleContainer}>
           <TouchableOpacity
@@ -637,8 +642,9 @@ export default function NavigationScreen({ navigation }) {
           </Text>
         </TouchableOpacity>
       </View>
+      )}
 
-      {route && (
+      {route && !isFullScreen && (
         <View style={styles.routeInfoContainer}>
           <Text style={styles.routeInfoText}>
             Distance: {(route.distance / 1000).toFixed(2)} km
@@ -781,9 +787,19 @@ export default function NavigationScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
         )}
+
+        {/* Exit Fullscreen Button */}
+        {isFullScreen && (
+          <TouchableOpacity
+            style={styles.exitFullscreenButton}
+            onPress={() => setIsFullScreen(false)}
+          >
+            <Text style={styles.exitFullscreenButtonText}>Exit Fullscreen</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {route && route.instructions && route.instructions.length > 0 && (
+      {route && route.instructions && route.instructions.length > 0 && !isFullScreen && (
         <View style={styles.instructionsContainer}>
           <Text style={styles.instructionsTitle}>Turn-by-Turn</Text>
           <ScrollView style={styles.instructionsList}>
@@ -1081,6 +1097,27 @@ const styles = StyleSheet.create({
   followMeButtonText: {
     color: COLORS.background,
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  exitFullscreenButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: COLORS.card,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  exitFullscreenButtonText: {
+    color: COLORS.primary,
+    fontSize: 13,
     fontWeight: 'bold',
   },
   geocodedCoordsDisplay: {
