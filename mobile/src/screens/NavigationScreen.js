@@ -1101,12 +1101,12 @@ const styles = StyleSheet.create({
   },
   exitFullscreenButton: {
     position: 'absolute',
-    top: 20,
+    top: 50,
     right: 20,
     backgroundColor: COLORS.card,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 24,
     borderWidth: 2,
     borderColor: COLORS.primary,
     elevation: 4,
@@ -1117,7 +1117,7 @@ const styles = StyleSheet.create({
   },
   exitFullscreenButtonText: {
     color: COLORS.primary,
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   geocodedCoordsDisplay: {
