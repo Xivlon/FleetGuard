@@ -24,15 +24,22 @@ initSentry();
 
 const Stack = createStackNavigator();
 
+// Helper function to get user initials
+function getInitials(user) {
+  if (user?.firstName?.length > 0 && user?.lastName?.length > 0) {
+    return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+  }
+  if (user?.email?.length > 0) {
+    return user.email[0].toUpperCase();
+  }
+  return 'U';
+}
+
 // User Icon Component
 function UserIcon({ user }) {
-  const initials = user?.firstName && user?.lastName 
-    ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
-    : user?.email?.[0]?.toUpperCase() || 'U';
-  
   return (
     <View style={styles.userIconContainer}>
-      <Text style={styles.userIconText}>{initials}</Text>
+      <Text style={styles.userIconText}>{getInitials(user)}</Text>
     </View>
   );
 }
@@ -103,15 +110,9 @@ function AppContent() {
                 fontWeight: 'bold',
               },
               headerRight: () => (
-                <TouchableOpacity 
-                  style={styles.headerIconButton}
-                  onPress={() => {
-                    // Future: Navigate to profile screen
-                    console.log('User icon pressed');
-                  }}
-                >
+                <View style={styles.headerIconButton}>
                   <UserIcon user={user} />
-                </TouchableOpacity>
+                </View>
               ),
             }}
           >
