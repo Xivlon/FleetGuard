@@ -28,6 +28,7 @@ const COLORS = {
   text: '#FFFFFF',
   border: '#10B981',
   routeColor: '#10B981',
+  userLocation: '#10B981',
 };
 
 // Helper function to normalize coordinates from either array [lng, lat] or object {latitude, longitude}
@@ -633,7 +634,7 @@ export default function NavigationScreen({ navigation }) {
             <Marker
               coordinate={userLocation}
               title="Your Location"
-              pinColor="#3B82F6"
+              pinColor={COLORS.userLocation}
               anchor={{ x: 0.5, y: 0.5 }}
             />
           )}
