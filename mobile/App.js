@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import FleetDashboard from './src/screens/FleetDashboard';
@@ -23,6 +23,19 @@ import { COLORS } from './src/config/constants';
 initSentry();
 
 const Stack = createStackNavigator();
+
+// User Icon Component
+function UserIcon({ user }) {
+  const initials = user?.firstName && user?.lastName 
+    ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+    : user?.email?.[0]?.toUpperCase() || 'U';
+  
+  return (
+    <View style={styles.userIconContainer}>
+      <Text style={styles.userIconText}>{initials}</Text>
+    </View>
+  );
+}
 
 // Inner component that has access to WebSocket and Auth contexts
 function AppContent() {
@@ -89,6 +102,17 @@ function AppContent() {
               headerTitleStyle: {
                 fontWeight: 'bold',
               },
+              headerRight: () => (
+                <TouchableOpacity 
+                  style={styles.headerIconButton}
+                  onPress={() => {
+                    // Future: Navigate to profile screen
+                    console.log('User icon pressed');
+                  }}
+                >
+                  <UserIcon user={user} />
+                </TouchableOpacity>
+              ),
             }}
           >
             {/* eslint-disable-next-line no-constant-condition */}
@@ -158,5 +182,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background
-  }
+  },
+  headerIconButton: {
+    marginRight: 12,
+  },
+  userIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.surface,
+  },
+  userIconText: {
+    color: COLORS.surface,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });
