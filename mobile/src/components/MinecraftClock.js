@@ -3,11 +3,11 @@ import { View, Text, StyleSheet } from 'react-native';
 
 /**
  * MinecraftClock component
- * Displays a Minecraft-style clock with day/night cycle (Green/Black Theme)
- * Dawn: 5:00-7:00 (Light green sunrise 🌅)
- * Day: 7:00-17:00 (Green sky with sun ☀️)
- * Dusk: 17:00-19:00 (Dark green sunset 🌇)
- * Night: 19:00-5:00 (Black sky with moon 🌙)
+ * Displays a Minecraft-style clock with day/night cycle
+ * Dawn: 5:00-7:00 (Orange sunrise 🌅)
+ * Day: 7:00-17:00 (Blue sky with golden sun ☀️)
+ * Dusk: 17:00-19:00 (Orange sunset 🌇)
+ * Night: 19:00-5:00 (Indigo sky with moon 🌙)
  */
 export default function MinecraftClock() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -44,26 +44,26 @@ export default function MinecraftClock() {
       dawn: {
         icon: '🌅',
         label: 'Dawn',
-        skyColor: '#34D399', // Light green
-        textColor: '#000'     // Black text for contrast
+        skyColor: '#FF8C42', // Orange sunrise
+        textColor: '#fff'
       },
       day: {
         icon: '☀️',
         label: 'Day',
-        skyColor: '#10B981', // Primary green
-        textColor: '#fff'     // White text
+        skyColor: '#4A90E2', // Blue sky
+        textColor: '#fff'
       },
       dusk: {
         icon: '🌇',
         label: 'Dusk',
-        skyColor: '#059669', // Secondary green
-        textColor: '#fff'     // White text
+        skyColor: '#FF6B35', // Orange sunset
+        textColor: '#fff'
       },
       night: {
         icon: '🌙',
         label: 'Night',
-        skyColor: '#000000', // Black
-        textColor: '#10B981' // Green text
+        skyColor: '#1A1A2E', // Dark indigo
+        textColor: '#fff'
       }
     };
 
@@ -119,11 +119,11 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 3,
-    borderColor: '#10B981', // Green border
+    borderColor: '#fff',
     overflow: 'hidden',
-    shadowColor: '#10B981',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.7,
+    shadowOpacity: 0.5,
     shadowRadius: 4,
     elevation: 5,
     justifyContent: 'center',
