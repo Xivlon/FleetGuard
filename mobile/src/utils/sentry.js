@@ -55,14 +55,15 @@ export function initSentry() {
     const sentryDsn = Constants.expoConfig?.extra?.sentryDsn;
     
     // Validate DSN is provided and not null
-    if (!sentryDsn) {
+    if (!sentryDsn || sentryDsn === null) {
       console.log('[Sentry] No DSN configured, skipping initialization');
       return;
     }
     
     // Validate DSN format
     if (!isValidDsn(sentryDsn)) {
-      console.log('[Sentry] Invalid DSN format, skipping initialization. DSN must start with https:// or http://');
+      console.error('[Sentry] ERROR: Invalid Sentry Dsn: protocol missing. DSN must start with https:// or http://');
+      console.log('[Sentry] Skipping initialization due to invalid DSN');
       return;
     }
     
