@@ -8,7 +8,7 @@ import Constants from 'expo-constants';
  * @returns {boolean} - True if running in Expo Go
  */
 function isExpoGo() {
-  return Constants.appOwnership === 'expo' || false;
+  return Constants.appOwnership === 'expo';
 }
 
 // Configure notification behavior
