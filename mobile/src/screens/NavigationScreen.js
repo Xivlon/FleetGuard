@@ -905,10 +905,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 4,
   },
   checkbox: {
-    width: 20,
-    height: 20,
+    width: 22,
+    height: 22,
     borderWidth: 2,
     borderColor: COLORS.primary,
     borderRadius: 4,
@@ -962,7 +963,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.primary,
     fontSize: 14,
-    minHeight: 40,
+    minHeight: 44,
   },
   calculateButton: {
     backgroundColor: COLORS.primary,

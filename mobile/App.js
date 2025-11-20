@@ -30,13 +30,15 @@ const Stack = createStackNavigator();
  * @returns {string} Two-letter initials or single letter from email, defaults to 'U'
  */
 function getInitials(user) {
-  const firstInitial = user?.firstName?.[0];
-  const lastInitial = user?.lastName?.[0];
+  if (!user) return 'U';
+  
+  const firstInitial = user.firstName?.[0];
+  const lastInitial = user.lastName?.[0];
   
   if (firstInitial && lastInitial) {
     return `${firstInitial}${lastInitial}`.toUpperCase();
   }
-  if (user?.email?.[0]) {
+  if (user.email?.[0]) {
     return user.email[0].toUpperCase();
   }
   return 'U';
