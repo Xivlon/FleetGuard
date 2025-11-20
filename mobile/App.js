@@ -92,8 +92,8 @@ function AppContent() {
               },
             }}
           >
-            {!isAuthenticated ? (
-              // Auth screens
+            {false ? (
+              // Auth screens (disabled)
               <>
                 <Stack.Screen
                   name="Login"
