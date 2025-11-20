@@ -14,11 +14,13 @@ import { useWebSocket } from '../contexts/WebSocketContext';
 import { useLocation } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { watchPosition, calculateHeading } from '../services/location';
+import { geocodeLocation } from '../services/geocoding';
 import TrafficOverlay from '../components/TrafficOverlay';
 import ObstacleMarkers from '../components/ObstacleMarkers';
 import WaypointMarker from '../components/WaypointMarker';
 import MinecraftClock from '../components/MinecraftClock';
 import WaypointModal from '../components/WaypointModal';
+import OrbitMarker from '../components/OrbitMarker';
 
 const COLORS = {
   primary: '#10B981',
@@ -57,6 +59,9 @@ export default function NavigationScreen({ navigation }) {
   const [endLat, setEndLat] = useState('37.7849');
   const [endLon, setEndLon] = useState('-122.4094');
   const [useMyLocation, setUseMyLocation] = useState(true);
+  const [useLocationName, setUseLocationName] = useState(true);
+  const [destinationName, setDestinationName] = useState('');
+  const [geocoding, setGeocoding] = useState(false);
   const [route, setRoute] = useState(null);
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -258,15 +263,50 @@ export default function NavigationScreen({ navigation }) {
 
     setLoading(true);
     try {
+      // Handle destination input - location name or coordinates
+      let endCoords;
+      if (useLocationName && destinationName.trim() !== '') {
+        // Geocode the location name
+        setGeocoding(true);
+        try {
+          const geocoded = await geocodeLocation(destinationName);
+          endCoords = {
+            latitude: geocoded.latitude,
+            longitude: geocoded.longitude,
+          };
+          // Update coordinate fields with geocoded values
+          setEndLat(geocoded.latitude.toFixed(6));
+          setEndLon(geocoded.longitude.toFixed(6));
+          console.log(`Geocoded "${destinationName}" to:`, endCoords);
+        } catch (geocodeError) {
+          setGeocoding(false);
+          setLoading(false);
+          Alert.alert(
+            'Location Not Found',
+            geocodeError.message || 'Could not find the location. Please try a different name or use coordinates.',
+            [
+              { text: 'Use Coordinates', onPress: () => setUseLocationName(false) },
+              { text: 'OK' }
+            ]
+          );
+          return;
+        } finally {
+          setGeocoding(false);
+        }
+      } else {
+        // Use manual coordinates
+        endCoords = {
+          latitude: parseFloat(endLat),
+          longitude: parseFloat(endLon),
+        };
+      }
+
       const response = await fetch(`${backendUrl}/api/routes/calculate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           start: startCoords,
-          end: {
-            latitude: parseFloat(endLat),
-            longitude: parseFloat(endLon),
-          },
+          end: endCoords,
           vehicleId: vehicleId,
         }),
       });
@@ -535,33 +575,65 @@ export default function NavigationScreen({ navigation }) {
           </View>
         )}
 
-        <Text style={styles.label}>End Location</Text>
-        <View style={styles.coordRow}>
-          <TextInput
-            style={styles.input}
-            value={endLat}
-            onChangeText={setEndLat}
-            placeholder="Latitude"
-            placeholderTextColor="#666"
-            keyboardType="numeric"
-          />
-          <TextInput
-            style={styles.input}
-            value={endLon}
-            onChangeText={setEndLon}
-            placeholder="Longitude"
-            placeholderTextColor="#666"
-            keyboardType="numeric"
-          />
+        {/* Toggle for using location name vs coordinates */}
+        <View style={styles.toggleContainer}>
+          <TouchableOpacity
+            style={styles.toggleButton}
+            onPress={() => setUseLocationName(!useLocationName)}
+          >
+            <View style={[styles.checkbox, useLocationName && styles.checkboxChecked]}>
+              {useLocationName && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <Text style={styles.toggleLabel}>Search by location name</Text>
+          </TouchableOpacity>
         </View>
+
+        <Text style={styles.label}>Destination</Text>
+        {useLocationName ? (
+          <TextInput
+            style={styles.input}
+            value={destinationName}
+            onChangeText={setDestinationName}
+            placeholder="Enter city, address, or place name"
+            placeholderTextColor="#666"
+            autoCapitalize="words"
+          />
+        ) : (
+          <View style={styles.coordRow}>
+            <TextInput
+              style={styles.input}
+              value={endLat}
+              onChangeText={setEndLat}
+              placeholder="Latitude"
+              placeholderTextColor="#666"
+              keyboardType="numeric"
+            />
+            <TextInput
+              style={styles.input}
+              value={endLon}
+              onChangeText={setEndLon}
+              placeholder="Longitude"
+              placeholderTextColor="#666"
+              keyboardType="numeric"
+            />
+          </View>
+        )}
+
+        {useLocationName && endLat && endLon && (
+          <View style={styles.geocodedCoordsDisplay}>
+            <Text style={styles.geocodedCoordsText}>
+              📍 {parseFloat(endLat).toFixed(4)}, {parseFloat(endLon).toFixed(4)}
+            </Text>
+          </View>
+        )}
 
         <TouchableOpacity
           style={styles.calculateButton}
           onPress={calculateRoute}
-          disabled={loading}
+          disabled={loading || geocoding}
         >
           <Text style={styles.calculateButtonText}>
-            {loading ? 'Calculating...' : 'Calculate Route'}
+            {geocoding ? 'Finding location...' : loading ? 'Calculating...' : 'Calculate Route'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -634,9 +706,10 @@ export default function NavigationScreen({ navigation }) {
             <Marker
               coordinate={userLocation}
               title="Your Location"
-              pinColor={COLORS.userLocation}
               anchor={{ x: 0.5, y: 0.5 }}
-            />
+            >
+              <OrbitMarker color={COLORS.userLocation} size={40} />
+            </Marker>
           )}
 
           {route && route.coordinates && (
@@ -1007,5 +1080,14 @@ const styles = StyleSheet.create({
     color: COLORS.background,
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  geocodedCoordsDisplay: {
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  geocodedCoordsText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontStyle: 'italic',
   },
 });
