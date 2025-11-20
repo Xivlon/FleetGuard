@@ -82,14 +82,7 @@
           "sounds": []
         }
       ],
-      "expo-secure-store",
-      [
-        "@sentry/react-native/expo",
-        {
-          "organization": "fleetguard",
-          "project": "fleetguard-mobile"
-        }
-      ]
+      "expo-secure-store"
     ],
     "extra": {
       "sentryDsn": null

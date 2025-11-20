@@ -42,47 +42,59 @@ The command above will update `app.json` with your project ID. Also update:
 }
 ```
 
-## 📱 Build for Testing
+## 📱 Build for Testing (Choose One)
 
-**⚠️ Important:** This app uses native modules (Sentry, Maps, Location, Notifications) that require a custom development build. **Expo Go will not work.**
+### Option A: Quick Test with Expo Go (Recommended for Development)
 
-### Option A: Development Build (For Active Development)
+**Pros**: Instant, no waiting for builds, fast refresh
+**Cons**: Sentry crash reporting disabled
 
-**Pros**: Full features, fast refresh, debugging tools
+```bash
+npm start
+
+# Scan QR code with:
+# - iOS: Camera app → opens in Expo Go
+# - Android: Expo Go app → scan QR
+```
+
+**Note:** Most features work in Expo Go. Sentry crash reporting is automatically disabled but all other features (Maps, Location, Notifications) work normally.
+
+### Option B: Development Build (For Full Features)
+
+**Pros**: All features including Sentry, identical to production
 **Cons**: 10-20 min initial build time
 
 #### For Android (Easier - No Apple account needed):
 
 ```bash
-# Build development client for Android
+# Install EAS CLI first
+npm install -g eas-cli
+eas login
+
+# Build development client
 npm run build:development:android
 
 # Wait for build (~15 minutes)
-# Download APK from link provided
-# Install on Android device
+# Download APK and install on device
 
-# Then start the dev server
+# Start dev server
 npm run dev
-
-# Open the app on your device
 ```
 
 #### For iOS (Requires Apple Developer Account):
 
 ```bash
-# Build development client for iOS
+# Build development client
 npm run build:development:ios
 
 # Wait for build (~20 minutes)
 # Install via TestFlight or direct install
 
-# Then start the dev server
+# Start dev server
 npm run dev
-
-# Open the app on your device
 ```
 
-### Option B: Preview Build (For Testing/Sharing)
+### Option C: Preview Build (For Testing/Sharing)
 
 **Pros**: All features work, sharable with team
 **Cons**: 10-20 min build time

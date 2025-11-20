@@ -133,19 +133,15 @@ npm run dev
 
 ### Mobile App
 
-**Important:** This app uses native modules and requires a custom development build. It cannot run in Expo Go.
-
 To run the React Native app on your device:
 
-1. Navigate to the `mobile/` directory and run `npm install`
-2. Build a development client:
-   - For Android: `npm run build:development:android`
-   - For iOS: `npm run build:development:ios`
-3. Install the development build on your device
-4. Run `npm run dev` to start the Expo development server
-5. Open the app on your device
+1. Install Expo Go app on your mobile device (iOS: App Store, Android: Google Play)
+2. Navigate to the `mobile/` directory
+3. Run `npm install` to install dependencies
+4. Run `npm start` to start the Expo development server
+5. Scan the QR code with Expo Go app on your device
 
-For detailed build instructions, see [BUILD_QUICK_START.md](./mobile/BUILD_QUICK_START.md)
+**Note:** Sentry crash reporting is disabled when running in Expo Go. For production builds with full Sentry integration, see [BUILD_QUICK_START.md](./mobile/BUILD_QUICK_START.md)
 
 ## Configuration
 
