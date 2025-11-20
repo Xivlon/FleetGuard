@@ -21,6 +21,26 @@ try {
 }
 
 /**
+ * Validate Sentry DSN format
+ * @param {string} dsn - The DSN to validate
+ * @returns {boolean} - True if valid, false otherwise
+ */
+function isValidDsn(dsn) {
+  if (!dsn || typeof dsn !== 'string') {
+    return false;
+  }
+  
+  // Check if DSN has the required protocol (https:// or http://)
+  if (!dsn.startsWith('https://') && !dsn.startsWith('http://')) {
+    return false;
+  }
+  
+  // Basic format validation: protocol://public_key@domain/project_id (with optional query params)
+  const dsnPattern = /^https?:\/\/[^@]+@[^/]+\/\d+/;
+  return dsnPattern.test(dsn);
+}
+
+/**
  * Initialize Sentry if DSN is provided in app config and native SDK is available
  */
 export function initSentry() {
@@ -34,8 +54,15 @@ export function initSentry() {
     // Get Sentry DSN from app.json extra config
     const sentryDsn = Constants.expoConfig?.extra?.sentryDsn;
     
+    // Validate DSN is provided and not null
     if (!sentryDsn) {
       console.log('[Sentry] No DSN configured, skipping initialization');
+      return;
+    }
+    
+    // Validate DSN format
+    if (!isValidDsn(sentryDsn)) {
+      console.log('[Sentry] Invalid DSN format, skipping initialization. DSN must start with https:// or http://');
       return;
     }
     

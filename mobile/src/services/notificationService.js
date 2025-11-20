@@ -3,6 +3,14 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
+/**
+ * Check if app is running in Expo Go
+ * @returns {boolean} - True if running in Expo Go
+ */
+function isExpoGo() {
+  return Constants.appOwnership === 'expo';
+}
+
 // Configure notification behavior
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -18,55 +26,80 @@ Notifications.setNotificationHandler({
 export async function registerForPushNotifications() {
   let token;
 
-  if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+  // Set up Android notification channels first (needed for local notifications to work)
+  if (Platform.OS === 'android') {
+    try {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C'
+      });
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+      // Create specific channels for different notification types
+      await Notifications.setNotificationChannelAsync('hazard_alert', {
+        name: 'Hazard Alerts',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF3B30'
+      });
+
+      await Notifications.setNotificationChannelAsync('route_update', {
+        name: 'Route Updates',
+        importance: Notifications.AndroidImportance.DEFAULT,
+        vibrationPattern: [0, 250],
+        lightColor: '#007AFF'
+      });
+
+      await Notifications.setNotificationChannelAsync('arrival', {
+        name: 'Arrival Notifications',
+        importance: Notifications.AndroidImportance.LOW,
+        lightColor: '#34C759'
+      });
+    } catch (error) {
+      console.log('[Notifications] Could not set up notification channels:', error.message);
     }
-
-    if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
-      return null;
-    }
-
-    token = (await Notifications.getExpoPushTokenAsync({
-      projectId: Constants.expoConfig?.extra?.eas?.projectId
-    })).data;
-  } else {
-    console.log('Must use physical device for Push Notifications');
   }
 
-  if (Platform.OS === 'android') {
-    Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C'
-    });
+  // Check if running in Expo Go on Android with SDK 53+
+  // Remote push notifications won't work, but local notifications will (channels set up above)
+  if (isExpoGo() && Platform.OS === 'android') {
+    console.log('[Notifications] Remote push notifications are not supported in Expo Go on Android (SDK 53+).');
+    console.log('[Notifications] Local notifications will still work. Use a development build for full push notification support.');
+    // Return null gracefully - local notifications will still work
+    return null;
+  }
 
-    // Create specific channels for different notification types
-    Notifications.setNotificationChannelAsync('hazard_alert', {
-      name: 'Hazard Alerts',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF3B30'
-    });
+  if (Device.isDevice) {
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
 
-    Notifications.setNotificationChannelAsync('route_update', {
-      name: 'Route Updates',
-      importance: Notifications.AndroidImportance.DEFAULT,
-      vibrationPattern: [0, 250],
-      lightColor: '#007AFF'
-    });
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
 
-    Notifications.setNotificationChannelAsync('arrival', {
-      name: 'Arrival Notifications',
-      importance: Notifications.AndroidImportance.LOW,
-      lightColor: '#34C759'
-    });
+      if (finalStatus !== 'granted') {
+        console.log('[Notifications] Permission not granted for push notifications');
+        return null;
+      }
+
+      // Try to get push token, but handle gracefully if it fails in Expo Go
+      try {
+        token = (await Notifications.getExpoPushTokenAsync({
+          projectId: Constants.expoConfig?.extra?.eas?.projectId
+        })).data;
+      } catch (error) {
+        console.log('[Notifications] Could not get push token (this is expected in Expo Go on Android):', error.message);
+        return null;
+      }
+    } catch (error) {
+      console.log('[Notifications] Error during push notification registration:', error.message);
+      return null;
+    }
+  } else {
+    console.log('[Notifications] Must use physical device for Push Notifications');
   }
 
   return token;
