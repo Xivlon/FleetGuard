@@ -3,10 +3,10 @@ import { Marker, Circle } from 'react-native-maps';
 import { View, Text, StyleSheet } from 'react-native';
 
 const WAYPOINT_COLORS = {
-  water_source: '#4A90E2',
-  camp: '#7ED321',
-  viewpoint: '#F5A623',
-  danger: '#D0021B'
+  water_source: '#10B981', // Primary green
+  camp: '#059669',         // Secondary green
+  viewpoint: '#34D399',    // Light green
+  danger: '#EF4444'        // Red (for contrast)
 };
 
 const WAYPOINT_ICONS = {
@@ -44,7 +44,7 @@ export default function WaypointMarker({ waypoints, onWaypointPress }) {
                   longitude: waypoint.location.longitude
                 }}
                 radius={waypoint.notificationRadius || 500}
-                fillColor="rgba(208, 2, 27, 0.15)" // Translucent red
+                fillColor="rgba(239, 68, 68, 0.15)" // Translucent red
                 strokeColor={color}
                 strokeWidth={2}
                 zIndex={5}
@@ -83,16 +83,16 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: '#10B981', // Green border
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.5,
     shadowRadius: 3,
     elevation: 5
   },
   dangerMarker: {
-    backgroundColor: '#fff', // Opaque white background for danger waypoints
-    borderColor: '#D0021B',
+    backgroundColor: '#1F1F1F', // Dark background for danger waypoints
+    borderColor: '#EF4444',     // Red border
     borderWidth: 3
   },
   iconContainer: {

@@ -114,7 +114,7 @@ export default function WaypointModal({ visible, location, onClose, onSubmit }) 
               value={name}
               onChangeText={setName}
               placeholder="e.g., Hidden Spring, Base Camp"
-              placeholderTextColor="#999"
+              placeholderTextColor="#666"
             />
 
             {/* Description input */}
@@ -124,7 +124,7 @@ export default function WaypointModal({ visible, location, onClose, onSubmit }) 
               value={description}
               onChangeText={setDescription}
               placeholder="Add details about this waypoint..."
-              placeholderTextColor="#999"
+              placeholderTextColor="#666"
               multiline
               numberOfLines={4}
             />
@@ -138,7 +138,7 @@ export default function WaypointModal({ visible, location, onClose, onSubmit }) 
                   value={notificationRadius}
                   onChangeText={setNotificationRadius}
                   placeholder="500"
-                  placeholderTextColor="#999"
+                  placeholderTextColor="#666"
                   keyboardType="numeric"
                 />
                 <Text style={styles.helperText}>
@@ -179,13 +179,15 @@ export default function WaypointModal({ visible, location, onClose, onSubmit }) 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'flex-end'
   },
   modalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1F1F1F', // Dark background
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderTopWidth: 3,
+    borderTopColor: '#10B981', // Green border
     paddingTop: 20,
     maxHeight: '80%'
   },
@@ -197,11 +199,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 10,
-    textAlign: 'center'
+    textAlign: 'center',
+    color: '#10B981' // Green text
   },
   locationText: {
     fontSize: 12,
-    color: '#666',
+    color: '#10B981', // Green text
     textAlign: 'center',
     marginBottom: 20
   },
@@ -209,7 +212,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
-    marginTop: 12
+    marginTop: 12,
+    color: '#fff' // White text
   },
   typeContainer: {
     flexDirection: 'row',
@@ -223,13 +227,13 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: '#333',      // Dark border
     alignItems: 'center',
-    backgroundColor: '#f9f9f9'
+    backgroundColor: '#000'   // Black background
   },
   typeButtonSelected: {
-    borderColor: '#4A90E2',
-    backgroundColor: '#E3F2FD'
+    borderColor: '#10B981',   // Green border
+    backgroundColor: '#1F1F1F' // Dark gray background
   },
   typeIcon: {
     fontSize: 30,
@@ -237,19 +241,20 @@ const styles = StyleSheet.create({
   },
   typeLabel: {
     fontSize: 12,
-    color: '#666'
+    color: '#999'             // Light gray text
   },
   typeLabelSelected: {
-    color: '#4A90E2',
+    color: '#10B981',         // Green text
     fontWeight: '600'
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#10B981',   // Green border
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#f9f9f9'
+    backgroundColor: '#000',  // Black background
+    color: '#fff'             // White text
   },
   textArea: {
     height: 100,
@@ -257,7 +262,7 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 12,
-    color: '#666',
+    color: '#10B981',         // Green text
     marginTop: 4,
     fontStyle: 'italic'
   },
@@ -276,21 +281,21 @@ const styles = StyleSheet.create({
     minHeight: 50
   },
   cancelButton: {
-    backgroundColor: '#f0f0f0',
-    borderWidth: 1,
-    borderColor: '#ddd'
+    backgroundColor: '#000',  // Black background
+    borderWidth: 2,
+    borderColor: '#333'       // Dark border
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666'
+    color: '#999'             // Light gray text
   },
   submitButton: {
-    backgroundColor: '#4A90E2'
+    backgroundColor: '#10B981' // Green background
   },
   submitButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff'
+    color: '#000'             // Black text for contrast
   }
 });
