@@ -2,16 +2,35 @@
  * Sentry Configuration
  * Initializes Sentry with DSN from app config (extra field)
  * No secrets should be hardcoded here
+ * 
+ * Note: Sentry native SDK requires a custom development build.
+ * When running in Expo Go, Sentry will be disabled.
  */
 
-import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
 
+// Dynamically import Sentry only if available (not in Expo Go)
+let Sentry = null;
+let sentryAvailable = false;
+
+try {
+  Sentry = require('@sentry/react-native');
+  sentryAvailable = true;
+} catch (e) {
+  console.log('[Sentry] Native SDK not available (running in Expo Go). Sentry is disabled.');
+}
+
 /**
- * Initialize Sentry if DSN is provided in app config
+ * Initialize Sentry if DSN is provided in app config and native SDK is available
  */
 export function initSentry() {
   try {
+    // Skip if Sentry is not available (Expo Go)
+    if (!sentryAvailable || !Sentry) {
+      console.log('[Sentry] Skipping initialization - native SDK not available');
+      return;
+    }
+
     // Get Sentry DSN from app.json extra config
     const sentryDsn = Constants.expoConfig?.extra?.sentryDsn;
     
@@ -73,6 +92,11 @@ export function captureException(error, context = {}) {
     console.error('[Error]', error, context);
   }
   
+  // Skip if Sentry is not available
+  if (!sentryAvailable || !Sentry) {
+    return;
+  }
+  
   try {
     Sentry.withScope((scope) => {
       Object.keys(context).forEach((key) => {
@@ -93,6 +117,11 @@ export function captureException(error, context = {}) {
 export function captureMessage(message, level = 'info') {
   if (__DEV__) {
     console.log(`[${level.toUpperCase()}]`, message);
+  }
+  
+  // Skip if Sentry is not available
+  if (!sentryAvailable || !Sentry) {
+    return;
   }
   
   try {

@@ -44,10 +44,10 @@ The command above will update `app.json` with your project ID. Also update:
 
 ## 📱 Build for Testing (Choose One)
 
-### Option A: Quick Test with Expo Go (No Build Required)
+### Option A: Quick Test with Expo Go (Recommended for Development)
 
-**Pros**: Instant, no waiting for builds
-**Cons**: Some features won't work (native modules)
+**Pros**: Instant, no waiting for builds, fast refresh
+**Cons**: Sentry crash reporting disabled
 
 ```bash
 npm start
@@ -57,7 +57,44 @@ npm start
 # - Android: Expo Go app → scan QR
 ```
 
-### Option B: Preview Build (Real Testing)
+**Note:** Most features work in Expo Go. Sentry crash reporting is automatically disabled but all other features (Maps, Location, Notifications) work normally.
+
+### Option B: Development Build (For Full Features)
+
+**Pros**: All features including Sentry, identical to production
+**Cons**: 10-20 min initial build time
+
+#### For Android (Easier - No Apple account needed):
+
+```bash
+# Install EAS CLI first
+npm install -g eas-cli
+eas login
+
+# Build development client
+npm run build:development:android
+
+# Wait for build (~15 minutes)
+# Download APK and install on device
+
+# Start dev server
+npm run dev
+```
+
+#### For iOS (Requires Apple Developer Account):
+
+```bash
+# Build development client
+npm run build:development:ios
+
+# Wait for build (~20 minutes)
+# Install via TestFlight or direct install
+
+# Start dev server
+npm run dev
+```
+
+### Option C: Preview Build (For Testing/Sharing)
 
 **Pros**: All features work, sharable with team
 **Cons**: 10-20 min build time

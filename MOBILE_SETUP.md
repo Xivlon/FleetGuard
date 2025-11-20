@@ -2,7 +2,7 @@
 
 ## Important: This is a React Native mobile app that needs to run on your computer/phone
 
-Since this is a React Native app built with Expo, it **cannot run in Replit's browser**. Follow these steps to run it on your device:
+Since this is a React Native app built with Expo, it **cannot run in Replit's browser**. Follow these steps to run it on your device using Expo Go:
 
 ## Prerequisites
 
