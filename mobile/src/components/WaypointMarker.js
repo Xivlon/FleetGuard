@@ -1,6 +1,7 @@
 import React from 'react';
 import { Marker, Circle } from 'react-native-maps';
 import { View, Text, StyleSheet } from 'react-native';
+import { Droplet, Tent, Eye, Skull } from 'lucide-react-native';
 
 const WAYPOINT_COLORS = {
   water_source: '#10B981', // Primary green
@@ -10,10 +11,10 @@ const WAYPOINT_COLORS = {
 };
 
 const WAYPOINT_ICONS = {
-  water_source: '💧',
-  camp: '⛺',
-  viewpoint: '🔭',
-  danger: '💀'
+  water_source: Droplet,
+  camp: Tent,
+  viewpoint: Eye,
+  danger: Skull
 };
 
 const WAYPOINT_LABELS = {
@@ -38,7 +39,7 @@ export default function WaypointMarker({ waypoints, onWaypointPress }) {
         if (!waypoint.location) return null;
 
         const color = WAYPOINT_COLORS[waypoint.type] || WAYPOINT_COLORS.viewpoint;
-        const icon = WAYPOINT_ICONS[waypoint.type] || WAYPOINT_ICONS.viewpoint;
+        const IconComponent = WAYPOINT_ICONS[waypoint.type] || WAYPOINT_ICONS.viewpoint;
         const label = WAYPOINT_LABELS[waypoint.type] || WAYPOINT_LABELS.viewpoint;
         const isDanger = waypoint.type === 'danger';
 
@@ -75,9 +76,11 @@ export default function WaypointMarker({ waypoints, onWaypointPress }) {
                   styles.markerContainer,
                   isDanger ? styles.dangerMarker : { backgroundColor: color }
                 ]}>
-                  <Text style={styles.iconContainer}>
-                    {icon}
-                  </Text>
+                  <IconComponent
+                    size={24}
+                    color={isDanger ? '#fff' : '#000'}
+                    strokeWidth={2.5}
+                  />
                 </View>
                 <View style={[
                   styles.labelContainer,
@@ -99,7 +102,7 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   markerContainer: {
-    padding: 8,
+    padding: 6,
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#10B981', // Green border
@@ -107,15 +110,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.5,
     shadowRadius: 3,
-    elevation: 5
+    elevation: 5,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   dangerMarker: {
     backgroundColor: '#1F1F1F', // Dark background for danger waypoints
     borderColor: '#EF4444',     // Red border
     borderWidth: 3
-  },
-  iconContainer: {
-    fontSize: 20
   },
   labelContainer: {
     marginTop: 2,

@@ -9,12 +9,13 @@ import {
   ScrollView,
   ActivityIndicator
 } from 'react-native';
+import { Droplet, Tent, Eye, Skull } from 'lucide-react-native';
 
 const WAYPOINT_TYPES = [
-  { type: 'water_source', label: 'Water Source', icon: '💧' },
-  { type: 'camp', label: 'Camp', icon: '⛺' },
-  { type: 'viewpoint', label: 'Viewpoint', icon: '🔭' },
-  { type: 'danger', label: 'Danger', icon: '💀' }
+  { type: 'water_source', label: 'Water Source', Icon: Droplet },
+  { type: 'camp', label: 'Camp', Icon: Tent },
+  { type: 'viewpoint', label: 'Viewpoint', Icon: Eye },
+  { type: 'danger', label: 'Danger', Icon: Skull }
 ];
 
 /**
@@ -87,24 +88,34 @@ export default function WaypointModal({ visible, location, onClose, onSubmit }) 
             {/* Type selector */}
             <Text style={styles.label}>Type *</Text>
             <View style={styles.typeContainer}>
-              {WAYPOINT_TYPES.map((type) => (
-                <TouchableOpacity
-                  key={type.type}
-                  style={[
-                    styles.typeButton,
-                    selectedType === type.type && styles.typeButtonSelected
-                  ]}
-                  onPress={() => setSelectedType(type.type)}
-                >
-                  <Text style={styles.typeIcon}>{type.icon}</Text>
-                  <Text style={[
-                    styles.typeLabel,
-                    selectedType === type.type && styles.typeLabelSelected
-                  ]}>
-                    {type.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {WAYPOINT_TYPES.map((type) => {
+                const IconComponent = type.Icon;
+                const isSelected = selectedType === type.type;
+                return (
+                  <TouchableOpacity
+                    key={type.type}
+                    style={[
+                      styles.typeButton,
+                      isSelected && styles.typeButtonSelected
+                    ]}
+                    onPress={() => setSelectedType(type.type)}
+                  >
+                    <View style={styles.typeIconContainer}>
+                      <IconComponent
+                        size={32}
+                        color={isSelected ? '#10B981' : '#999'}
+                        strokeWidth={2}
+                      />
+                    </View>
+                    <Text style={[
+                      styles.typeLabel,
+                      isSelected && styles.typeLabelSelected
+                    ]}>
+                      {type.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {/* Name input */}
@@ -235,9 +246,8 @@ const styles = StyleSheet.create({
     borderColor: '#10B981',   // Green border
     backgroundColor: '#1F1F1F' // Dark gray background
   },
-  typeIcon: {
-    fontSize: 30,
-    marginBottom: 5
+  typeIconContainer: {
+    marginBottom: 8
   },
   typeLabel: {
     fontSize: 12,
