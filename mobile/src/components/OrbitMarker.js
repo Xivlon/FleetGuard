@@ -14,7 +14,7 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
         width: size, 
         height: size, 
         borderRadius: size / 2,
-        borderWidth: 3,
+        borderWidth: Math.max(2, size * 0.05),
         borderColor: color,
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
       }]} />
@@ -47,6 +47,8 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     position: 'absolute',
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
