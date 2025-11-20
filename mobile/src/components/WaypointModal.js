@@ -153,7 +153,7 @@ export default function WaypointModal({ visible, location, onClose, onSubmit }) 
                   keyboardType="numeric"
                 />
                 <Text style={styles.helperText}>
-                  You'll be alerted when within this distance
+                  You&apos;ll be alerted when within this distance
                 </Text>
               </>
             )}

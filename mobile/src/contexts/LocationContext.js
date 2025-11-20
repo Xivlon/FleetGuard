@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import * as Location from 'expo-location';
-import { Alert, Linking, Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { watchPosition } from '../services/location';
 
 const LocationContext = createContext(null);

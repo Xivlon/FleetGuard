@@ -4,7 +4,7 @@
  */
 
 require('dotenv').config();
-const { User, Waypoint, sequelize, testConnection, syncDatabase } = require('../models');
+const { User, Waypoint, testConnection, syncDatabase } = require('../models');
 const logger = require('../utils/logger');
 
 // Mock danger zones in different locations (latitude, longitude, description)
