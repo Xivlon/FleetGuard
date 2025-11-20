@@ -708,7 +708,7 @@ export default function NavigationScreen({ navigation }) {
               title="Your Location"
               anchor={{ x: 0.5, y: 0.5 }}
             >
-              <OrbitMarker color={COLORS.userLocation} size={40} />
+              <OrbitMarker color={COLORS.userLocation} size={60} />
             </Marker>
           )}
 
@@ -941,10 +941,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
     color: COLORS.text,
-    padding: 12,
+    padding: 16,
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: COLORS.primary,
+    fontSize: 16,
+    minHeight: 50,
   },
   calculateButton: {
     backgroundColor: COLORS.primary,
