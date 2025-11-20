@@ -107,17 +107,17 @@ function AppContent() {
                 />
               </>
             ) : (
-              // Main app screens
+              // Main app screens - Start with Navigation as initial screen
               <>
-                <Stack.Screen
-                  name="FleetDashboard"
-                  component={FleetDashboard}
-                  options={{ title: 'Fleet Dashboard' }}
-                />
                 <Stack.Screen
                   name="Navigation"
                   component={NavigationScreen}
                   options={{ title: 'Navigation' }}
+                />
+                <Stack.Screen
+                  name="FleetDashboard"
+                  component={FleetDashboard}
+                  options={{ title: 'Fleet Dashboard' }}
                 />
                 <Stack.Screen
                   name="ReportHazard"

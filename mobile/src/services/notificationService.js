@@ -61,11 +61,12 @@ export async function registerForPushNotifications() {
     }
   }
 
-  // Check if running in Expo Go on Android with SDK 53+
+  // Check if running in Expo Go with SDK 53+
   // Remote push notifications won't work, but local notifications will (channels set up above)
-  if (isExpoGo() && Platform.OS === 'android') {
-    console.log('[Notifications] Remote push notifications are not supported in Expo Go on Android (SDK 53+).');
-    console.log('[Notifications] Local notifications will still work. Use a development build for full push notification support.');
+  if (isExpoGo()) {
+    console.log('[Notifications] INFO: expo-notifications remote push functionality is not fully supported in Expo Go.');
+    console.log('[Notifications] Local notifications will still work. For full push notification support, use a development build.');
+    console.log('[Notifications] Read more: https://docs.expo.dev/develop/development-builds/introduction/');
     // Return null gracefully - local notifications will still work
     return null;
   }

@@ -34,15 +34,18 @@ export async function watchPosition(onPositionUpdate) {
 
   const subscription = await Location.watchPositionAsync(
     {
-      accuracy: Location.Accuracy.High,
-      timeInterval: 1500, // Update every 1.5 seconds
-      distanceInterval: 5, // Or every 5 meters
+      accuracy: Location.Accuracy.BestForNavigation,
+      timeInterval: 1000, // Update every 1 second for better real-time tracking
+      distanceInterval: 3, // Or every 3 meters
+      mayShowUserSettingsDialog: true,
     },
     (location) => {
       console.log('[Location] Position update:', {
         lat: location.coords.latitude.toFixed(6),
         lon: location.coords.longitude.toFixed(6),
         accuracy: location.coords.accuracy?.toFixed(2),
+        speed: location.coords.speed?.toFixed(2),
+        heading: location.coords.heading?.toFixed(1),
       });
       onPositionUpdate(location);
     }

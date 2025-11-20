@@ -80,6 +80,12 @@ const syncDatabase = async (options = {}) => {
   }
 };
 
+// Test database connection
+const testConnection = async () => {
+  const { testConnection: dbTestConnection } = require('../config/database');
+  return await dbTestConnection();
+};
+
 module.exports = {
   sequelize,
   User,
@@ -90,5 +96,6 @@ module.exports = {
   Obstacle,
   TrafficData,
   Waypoint,
-  syncDatabase
+  syncDatabase,
+  testConnection
 };

@@ -1,11 +1,11 @@
 const { Sequelize } = require('sequelize');
 const logger = require('../utils/logger');
 
-// Support both DATABASE_URL (Fly.io, Heroku, etc.) and individual env vars (local dev)
+// Support both DATABASE_URL (Fly.io, Heroku, Neon, etc.) and individual env vars (local dev)
 let sequelize;
 
 if (process.env.DATABASE_URL) {
-  // Production: Use DATABASE_URL (Fly.io automatically sets this)
+  // Production: Use DATABASE_URL (Fly.io, Neon, Heroku, etc.)
   sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
     logging: (msg) => logger.debug(msg),
@@ -21,7 +21,7 @@ if (process.env.DATABASE_URL) {
       freezeTableName: true
     },
     dialectOptions: {
-      ssl: process.env.NODE_ENV === 'production' ? {
+      ssl: process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.includes('neon.tech') ? {
         require: true,
         rejectUnauthorized: false
       } : false
