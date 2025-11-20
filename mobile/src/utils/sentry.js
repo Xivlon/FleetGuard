@@ -35,8 +35,8 @@ function isValidDsn(dsn) {
     return false;
   }
   
-  // Basic format validation: protocol://public_key@domain/project_id
-  const dsnPattern = /^https?:\/\/[^@]+@[^/]+\/\d+$/;
+  // Basic format validation: protocol://public_key@domain/project_id (with optional query params)
+  const dsnPattern = /^https?:\/\/[^@]+@[^/]+\/\d+/;
   return dsnPattern.test(dsn);
 }
 
@@ -55,7 +55,7 @@ export function initSentry() {
     const sentryDsn = Constants.expoConfig?.extra?.sentryDsn;
     
     // Validate DSN is provided and not null
-    if (!sentryDsn || sentryDsn === null) {
+    if (!sentryDsn) {
       console.log('[Sentry] No DSN configured, skipping initialization');
       return;
     }
