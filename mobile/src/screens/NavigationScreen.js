@@ -12,9 +12,13 @@ import {
 import MapView, { Marker, Polyline, UrlTile, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useLocation } from '../contexts/LocationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { watchPosition, calculateHeading } from '../services/location';
 import TrafficOverlay from '../components/TrafficOverlay';
 import ObstacleMarkers from '../components/ObstacleMarkers';
+import WaypointMarker from '../components/WaypointMarker';
+import MinecraftClock from '../components/MinecraftClock';
+import WaypointModal from '../components/WaypointModal';
 
 const COLORS = {
   primary: '#10B981',
@@ -44,8 +48,9 @@ const normalizeCoord = (coord) => {
 };
 
 export default function NavigationScreen({ navigation }) {
-  const { hazards, obstacles, backendUrl, routes, sendVehiclePosition } = useWebSocket();
+  const { hazards, obstacles, waypoints, backendUrl, routes, sendVehiclePosition } = useWebSocket();
   const { currentLocation, permissionStatus, requestPermissions, openSettings } = useLocation();
+  const { token } = useAuth();
   const [startLat, setStartLat] = useState('37.7749');
   const [startLon, setStartLon] = useState('-122.4194');
   const [endLat, setEndLat] = useState('37.7849');
@@ -59,6 +64,9 @@ export default function NavigationScreen({ navigation }) {
   const [userLocation, setUserLocation] = useState(null);
   const [locationSubscription, setLocationSubscription] = useState(null);
   const [isRerouting, setIsRerouting] = useState(false);
+  const [waypointModalVisible, setWaypointModalVisible] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [dangerAlertShown, setDangerAlertShown] = useState(new Set());
   const mapRef = useRef(null);
   const lastPositionRef = useRef(null);
 
@@ -350,6 +358,70 @@ export default function NavigationScreen({ navigation }) {
     return R * c;
   };
 
+  // Handle map long press to create waypoint
+  const handleMapLongPress = (event) => {
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+    setSelectedLocation({ latitude, longitude });
+    setWaypointModalVisible(true);
+  };
+
+  // Submit waypoint to backend
+  const handleWaypointSubmit = async (waypointData) => {
+    try {
+      const response = await fetch(`${backendUrl}/api/waypoints`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(waypointData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create waypoint');
+      }
+
+      const data = await response.json();
+      console.log('Waypoint created:', data);
+      Alert.alert('Success', 'Waypoint created successfully!');
+    } catch (error) {
+      console.error('Error creating waypoint:', error);
+      throw error;
+    }
+  };
+
+  // Check for danger waypoint proximity and alert
+  useEffect(() => {
+    if (!userLocation || !waypoints) return;
+
+    const dangerWaypoints = waypoints.filter(w => w.type === 'danger');
+
+    dangerWaypoints.forEach(waypoint => {
+      const distance = calculateDistance(userLocation, waypoint.location);
+      const radius = waypoint.notificationRadius || 500;
+      const resetRadius = radius * 2;
+
+      // If within notification radius and not already shown
+      if (distance <= radius && !dangerAlertShown.has(waypoint.id)) {
+        Alert.alert(
+          '⚠️ Danger Zone Alert',
+          `${waypoint.name || 'Danger waypoint'} ahead!\n\nDistance: ${Math.round(distance)}m\n${waypoint.description ? '\n' + waypoint.description : ''}`,
+          [{ text: 'OK' }]
+        );
+        setDangerAlertShown(prev => new Set(prev).add(waypoint.id));
+      }
+
+      // Reset alert when moving away (2x radius)
+      if (distance > resetRadius && dangerAlertShown.has(waypoint.id)) {
+        setDangerAlertShown(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(waypoint.id);
+          return newSet;
+        });
+      }
+    });
+  }, [userLocation, waypoints]);
+
   const routeHazards = route ? checkHazardsOnRoute() : [];
   const routeObstaclesOnPath = route ? checkObstaclesOnRoute() : [];
 
@@ -516,6 +588,7 @@ export default function NavigationScreen({ navigation }) {
           style={styles.map}
           region={mapRegion}
           customMapStyle={darkMapStyle}
+          onLongPress={handleMapLongPress}
         >
           <UrlTile
             urlTemplate="https://api.maptiler.com/maps/streets-v4/style.json?key=r8Q0yFYWmx1aKjnjs4Ff"
@@ -590,7 +663,22 @@ export default function NavigationScreen({ navigation }) {
               );
             }}
           />
+
+          {/* Waypoint Markers */}
+          <WaypointMarker
+            waypoints={waypoints || []}
+            onWaypointPress={(waypoint) => {
+              Alert.alert(
+                `${waypoint.type.replace('_', ' ').toUpperCase()}`,
+                `${waypoint.name ? waypoint.name + '\n\n' : ''}${waypoint.description || 'No description available'}`,
+                [{ text: 'OK' }]
+              );
+            }}
+          />
         </MapView>
+
+        {/* Minecraft-style Clock */}
+        <MinecraftClock />
 
         {route && (
           <TouchableOpacity
@@ -643,6 +731,14 @@ export default function NavigationScreen({ navigation }) {
           )}
         </View>
       )}
+
+      {/* Waypoint Creation Modal */}
+      <WaypointModal
+        visible={waypointModalVisible}
+        location={selectedLocation}
+        onClose={() => setWaypointModalVisible(false)}
+        onSubmit={handleWaypointSubmit}
+      />
     </View>
   );
 }
