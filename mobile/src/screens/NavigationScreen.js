@@ -19,6 +19,7 @@ import ObstacleMarkers from '../components/ObstacleMarkers';
 import WaypointMarker from '../components/WaypointMarker';
 import MinecraftClock from '../components/MinecraftClock';
 import WaypointModal from '../components/WaypointModal';
+import OrbitMarker from '../components/OrbitMarker';
 
 const COLORS = {
   primary: '#10B981',
@@ -634,9 +635,10 @@ export default function NavigationScreen({ navigation }) {
             <Marker
               coordinate={userLocation}
               title="Your Location"
-              pinColor={COLORS.userLocation}
               anchor={{ x: 0.5, y: 0.5 }}
-            />
+            >
+              <OrbitMarker color={COLORS.userLocation} size={40} />
+            </Marker>
           )}
 
           {route && route.coordinates && (
