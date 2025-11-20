@@ -1,19 +1,34 @@
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
-const config = getDefaultConfig(__dirname);
-
 // Configure Metro for monorepo structure
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, '..');
 
+const config = getDefaultConfig(projectRoot);
+
+// Set the project root explicitly
+config.projectRoot = projectRoot;
 config.watchFolders = [workspaceRoot];
+
 config.resolver = {
   ...config.resolver,
   nodeModulesPaths: [
     path.resolve(projectRoot, 'node_modules'),
     path.resolve(workspaceRoot, 'node_modules'),
   ],
+  // Resolve the entry point to the correct location
+  resolveRequest: (context, moduleName, platform) => {
+    // If trying to import from expo/AppEntry, redirect to our custom entry point
+    if (moduleName === 'expo/AppEntry' || moduleName === './node_modules/expo/AppEntry') {
+      return {
+        filePath: path.resolve(projectRoot, 'index.js'),
+        type: 'sourceFile',
+      };
+    }
+    // Use default resolver for all other modules
+    return context.resolveRequest(context, moduleName, platform);
+  },
 };
 
 // Configure Metro for better local development
