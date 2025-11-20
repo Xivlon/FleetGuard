@@ -26,7 +26,43 @@ Notifications.setNotificationHandler({
 export async function registerForPushNotifications() {
   let token;
 
+  // Set up Android notification channels first (needed for local notifications to work)
+  if (Platform.OS === 'android') {
+    try {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C'
+      });
+
+      // Create specific channels for different notification types
+      await Notifications.setNotificationChannelAsync('hazard_alert', {
+        name: 'Hazard Alerts',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF3B30'
+      });
+
+      await Notifications.setNotificationChannelAsync('route_update', {
+        name: 'Route Updates',
+        importance: Notifications.AndroidImportance.DEFAULT,
+        vibrationPattern: [0, 250],
+        lightColor: '#007AFF'
+      });
+
+      await Notifications.setNotificationChannelAsync('arrival', {
+        name: 'Arrival Notifications',
+        importance: Notifications.AndroidImportance.LOW,
+        lightColor: '#34C759'
+      });
+    } catch (error) {
+      console.log('[Notifications] Could not set up notification channels:', error.message);
+    }
+  }
+
   // Check if running in Expo Go on Android with SDK 53+
+  // Remote push notifications won't work, but local notifications will (channels set up above)
   if (isExpoGo() && Platform.OS === 'android') {
     console.log('[Notifications] Remote push notifications are not supported in Expo Go on Android (SDK 53+).');
     console.log('[Notifications] Local notifications will still work. Use a development build for full push notification support.');
@@ -64,40 +100,6 @@ export async function registerForPushNotifications() {
     }
   } else {
     console.log('[Notifications] Must use physical device for Push Notifications');
-  }
-
-  if (Platform.OS === 'android') {
-    try {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C'
-      });
-
-      // Create specific channels for different notification types
-      await Notifications.setNotificationChannelAsync('hazard_alert', {
-        name: 'Hazard Alerts',
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF3B30'
-      });
-
-      await Notifications.setNotificationChannelAsync('route_update', {
-        name: 'Route Updates',
-        importance: Notifications.AndroidImportance.DEFAULT,
-        vibrationPattern: [0, 250],
-        lightColor: '#007AFF'
-      });
-
-      await Notifications.setNotificationChannelAsync('arrival', {
-        name: 'Arrival Notifications',
-        importance: Notifications.AndroidImportance.LOW,
-        lightColor: '#34C759'
-      });
-    } catch (error) {
-      console.log('[Notifications] Could not set up notification channels:', error.message);
-    }
   }
 
   return token;
