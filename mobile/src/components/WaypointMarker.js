@@ -16,6 +16,13 @@ const WAYPOINT_ICONS = {
   danger: '💀'
 };
 
+const WAYPOINT_LABELS = {
+  water_source: 'WATER',
+  camp: 'CAMP',
+  viewpoint: 'VIEW',
+  danger: 'DANGER'
+};
+
 /**
  * WaypointMarker component
  * Displays waypoints as markers with special rendering for danger waypoints
@@ -32,6 +39,7 @@ export default function WaypointMarker({ waypoints, onWaypointPress }) {
 
         const color = WAYPOINT_COLORS[waypoint.type] || WAYPOINT_COLORS.viewpoint;
         const icon = WAYPOINT_ICONS[waypoint.type] || WAYPOINT_ICONS.viewpoint;
+        const label = WAYPOINT_LABELS[waypoint.type] || WAYPOINT_LABELS.viewpoint;
         const isDanger = waypoint.type === 'danger';
 
         return (
@@ -62,13 +70,21 @@ export default function WaypointMarker({ waypoints, onWaypointPress }) {
               onPress={() => onWaypointPress && onWaypointPress(waypoint)}
               zIndex={isDanger ? 11 : 8}
             >
-              <View style={[
-                styles.markerContainer,
-                isDanger ? styles.dangerMarker : { backgroundColor: color }
-              ]}>
-                <Text style={styles.iconContainer}>
-                  {icon}
-                </Text>
+              <View style={styles.markerWrapper}>
+                <View style={[
+                  styles.markerContainer,
+                  isDanger ? styles.dangerMarker : { backgroundColor: color }
+                ]}>
+                  <Text style={styles.iconContainer}>
+                    {icon}
+                  </Text>
+                </View>
+                <View style={[
+                  styles.labelContainer,
+                  { backgroundColor: color }
+                ]}>
+                  <Text style={styles.labelText}>{label}</Text>
+                </View>
               </View>
             </Marker>
           </View>
@@ -79,6 +95,9 @@ export default function WaypointMarker({ waypoints, onWaypointPress }) {
 }
 
 const styles = StyleSheet.create({
+  markerWrapper: {
+    alignItems: 'center'
+  },
   markerContainer: {
     padding: 8,
     borderRadius: 20,
@@ -97,7 +116,26 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     fontSize: 20
+  },
+  labelContainer: {
+    marginTop: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#000',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3
+  },
+  labelText: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center'
   }
 });
 
-export { WAYPOINT_COLORS, WAYPOINT_ICONS };
+export { WAYPOINT_COLORS, WAYPOINT_ICONS, WAYPOINT_LABELS };
