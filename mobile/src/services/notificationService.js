@@ -3,6 +3,14 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
+/**
+ * Check if app is running in Expo Go
+ * @returns {boolean} - True if running in Expo Go
+ */
+function isExpoGo() {
+  return Constants.appOwnership === 'expo';
+}
+
 // Configure notification behavior
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -18,55 +26,78 @@ Notifications.setNotificationHandler({
 export async function registerForPushNotifications() {
   let token;
 
+  // Check if running in Expo Go on Android with SDK 53+
+  if (isExpoGo() && Platform.OS === 'android') {
+    console.log('[Notifications] Remote push notifications are not supported in Expo Go on Android (SDK 53+).');
+    console.log('[Notifications] Local notifications will still work. Use a development build for full push notification support.');
+    // Return null gracefully - local notifications will still work
+    return null;
+  }
+
   if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
 
-    if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
+      if (finalStatus !== 'granted') {
+        console.log('[Notifications] Permission not granted for push notifications');
+        return null;
+      }
+
+      // Try to get push token, but handle gracefully if it fails in Expo Go
+      try {
+        token = (await Notifications.getExpoPushTokenAsync({
+          projectId: Constants.expoConfig?.extra?.eas?.projectId
+        })).data;
+      } catch (error) {
+        console.log('[Notifications] Could not get push token (this is expected in Expo Go on Android):', error.message);
+        return null;
+      }
+    } catch (error) {
+      console.log('[Notifications] Error during push notification registration:', error.message);
       return null;
     }
-
-    token = (await Notifications.getExpoPushTokenAsync({
-      projectId: Constants.expoConfig?.extra?.eas?.projectId
-    })).data;
   } else {
-    console.log('Must use physical device for Push Notifications');
+    console.log('[Notifications] Must use physical device for Push Notifications');
   }
 
   if (Platform.OS === 'android') {
-    Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C'
-    });
+    try {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C'
+      });
 
-    // Create specific channels for different notification types
-    Notifications.setNotificationChannelAsync('hazard_alert', {
-      name: 'Hazard Alerts',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF3B30'
-    });
+      // Create specific channels for different notification types
+      await Notifications.setNotificationChannelAsync('hazard_alert', {
+        name: 'Hazard Alerts',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF3B30'
+      });
 
-    Notifications.setNotificationChannelAsync('route_update', {
-      name: 'Route Updates',
-      importance: Notifications.AndroidImportance.DEFAULT,
-      vibrationPattern: [0, 250],
-      lightColor: '#007AFF'
-    });
+      await Notifications.setNotificationChannelAsync('route_update', {
+        name: 'Route Updates',
+        importance: Notifications.AndroidImportance.DEFAULT,
+        vibrationPattern: [0, 250],
+        lightColor: '#007AFF'
+      });
 
-    Notifications.setNotificationChannelAsync('arrival', {
-      name: 'Arrival Notifications',
-      importance: Notifications.AndroidImportance.LOW,
-      lightColor: '#34C759'
-    });
+      await Notifications.setNotificationChannelAsync('arrival', {
+        name: 'Arrival Notifications',
+        importance: Notifications.AndroidImportance.LOW,
+        lightColor: '#34C759'
+      });
+    } catch (error) {
+      console.log('[Notifications] Could not set up notification channels:', error.message);
+    }
   }
 
   return token;
