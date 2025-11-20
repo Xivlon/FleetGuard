@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import FleetDashboard from './src/screens/FleetDashboard';
@@ -23,6 +23,40 @@ import { COLORS } from './src/config/constants';
 initSentry();
 
 const Stack = createStackNavigator();
+
+/**
+ * Helper function to get user initials from user object
+ * @param {Object} user - User object with optional firstName, lastName, and email
+ * @returns {string} Two-letter initials or single letter from email, defaults to 'U'
+ */
+function getInitials(user) {
+  if (!user) return 'U';
+  
+  const firstInitial = user.firstName?.[0];
+  const lastInitial = user.lastName?.[0];
+  
+  if (firstInitial && lastInitial) {
+    return `${firstInitial}${lastInitial}`.toUpperCase();
+  }
+  if (user.email?.[0]) {
+    return user.email[0].toUpperCase();
+  }
+  return 'U';
+}
+
+/**
+ * UserIcon component displays user initials in a circular badge
+ * @param {Object} props - Component props
+ * @param {Object} props.user - User object to extract initials from
+ * @returns {React.Component} Circular icon with user initials
+ */
+function UserIcon({ user }) {
+  return (
+    <View style={styles.userIconContainer}>
+      <Text style={styles.userIconText}>{getInitials(user)}</Text>
+    </View>
+  );
+}
 
 // Inner component that has access to WebSocket and Auth contexts
 function AppContent() {
@@ -89,6 +123,11 @@ function AppContent() {
               headerTitleStyle: {
                 fontWeight: 'bold',
               },
+              headerRight: () => (
+                <View style={styles.headerIconButton}>
+                  <UserIcon user={user} />
+                </View>
+              ),
             }}
           >
             {/* eslint-disable-next-line no-constant-condition */}
@@ -158,5 +197,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background
-  }
+  },
+  headerIconButton: {
+    marginRight: 12,
+  },
+  userIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.surface,
+  },
+  userIconText: {
+    color: COLORS.surface,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });
