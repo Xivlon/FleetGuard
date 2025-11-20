@@ -22,6 +22,7 @@ module.exports = {
     'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     'react/prop-types': 'off',
     'react/react-in-jsx-scope': 'off',
+    'react-hooks/exhaustive-deps': 'off', // Disable due to ESLint v9 incompatibility
   },
   settings: {
     react: {

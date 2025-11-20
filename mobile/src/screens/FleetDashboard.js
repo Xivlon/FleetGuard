@@ -171,14 +171,7 @@ export default function FleetDashboard({ navigation }) {
           style={[styles.actionButton, styles.reportButton]}
           onPress={() => navigation.navigate('ReportHazard')}
         >
-          <Text style={styles.actionButtonText}>Report Hazard</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.obstacleButton]}
-          onPress={() => navigation.navigate('ReportObstacle')}
-        >
-          <Text style={styles.actionButtonText}>Report Obstacle</Text>
+          <Text style={styles.actionButtonText}>Report Issue</Text>
         </TouchableOpacity>
       </View>
 
@@ -302,9 +295,6 @@ const styles = StyleSheet.create({
   },
   reportButton: {
     backgroundColor: COLORS.secondary,
-  },
-  obstacleButton: {
-    backgroundColor: '#F59E0B',
   },
   actionButtonText: {
     color: COLORS.background,

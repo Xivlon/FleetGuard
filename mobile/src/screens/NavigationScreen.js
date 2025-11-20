@@ -585,7 +585,7 @@ export default function NavigationScreen({ navigation }) {
                 obstacle.description || 'No description available',
                 [
                   { text: 'OK' },
-                  { text: 'Report Location Issue', onPress: () => navigation.navigate('ReportObstacle') }
+                  { text: 'Report Location Issue', onPress: () => navigation.navigate('ReportHazard') }
                 ]
               );
             }}
