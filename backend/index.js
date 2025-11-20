@@ -19,6 +19,7 @@ const tripRoutes = require('./routes/trips');
 const analyticsRoutes = require('./routes/analytics');
 const notificationRoutes = require('./routes/notifications');
 const obstaclesRoutes = require('./routes/obstacles');
+const waypointsRoutes = require('./routes/waypoints');
 
 // Validate GRAPHHOPPER_API_KEY in production
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -53,6 +54,17 @@ const corsOptions = NODE_ENV === 'production'
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Make WebSocket server available to routes via an io-like interface
+app.set('io', {
+  emit: (event, data) => {
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ type: event, payload: data }));
+      }
+    });
+  }
+});
+
 // Register routes
 app.use('/api/auth', authRoutes);
 app.use('/api/fleets', fleetRoutes);
@@ -60,6 +72,7 @@ app.use('/api/trips', tripRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/obstacles', obstaclesRoutes);
+app.use('/api/waypoints', waypointsRoutes);
 
 const PORT = process.env.PORT || 5000;
 
@@ -137,12 +150,17 @@ wss.on('connection', (ws, req) => {
     ws.lastPingTime = Date.now();
   });
   
-  // Fetch active obstacles from database
+  // Fetch active obstacles and waypoints from database
   const sendInitialData = async () => {
     try {
-      const { Obstacle } = require('./models');
+      const { Obstacle, Waypoint } = require('./models');
       const activeObstacles = await Obstacle.findAll({
         where: { status: 'active' },
+        include: [{ model: require('./models').User, as: 'reporter', attributes: ['id', 'firstName', 'lastName'] }]
+      });
+
+      const publicWaypoints = await Waypoint.findAll({
+        where: { isPublic: true },
         include: [{ model: require('./models').User, as: 'reporter', attributes: ['id', 'firstName', 'lastName'] }]
       });
 
@@ -151,17 +169,19 @@ wss.on('connection', (ws, req) => {
         hazards: Array.from(hazards.values()),
         vehicles: Array.from(vehicles.values()),
         routes: Array.from(activeRoutes.values()),
-        obstacles: activeObstacles.map(o => o.toJSON())
+        obstacles: activeObstacles.map(o => o.toJSON()),
+        waypoints: publicWaypoints.map(w => w.toJSON())
       }));
     } catch (error) {
       logger.error('Error sending initial data:', error);
-      // Send without obstacles if there's an error
+      // Send without obstacles/waypoints if there's an error
       ws.send(JSON.stringify({
         type: 'INITIAL_DATA',
         hazards: Array.from(hazards.values()),
         vehicles: Array.from(vehicles.values()),
         routes: Array.from(activeRoutes.values()),
-        obstacles: []
+        obstacles: [],
+        waypoints: []
       }));
     }
   };

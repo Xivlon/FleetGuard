@@ -21,6 +21,7 @@ export const WebSocketProvider = ({ children }) => {
   const [vehicles, setVehicles] = useState([]);
   const [hazards, setHazards] = useState([]);
   const [obstacles, setObstacles] = useState([]);
+  const [waypoints, setWaypoints] = useState([]);
   const [routes, setRoutes] = useState({});
   const [connected, setConnected] = useState(false);
   const [routeAlerts, setRouteAlerts] = useState([]);
@@ -58,6 +59,7 @@ export const WebSocketProvider = ({ children }) => {
               setVehicles(data.vehicles || []);
               setHazards(data.hazards || []);
               setObstacles(data.obstacles || []);
+              setWaypoints(data.waypoints || []);
               setRoutes(data.routes || {});
               break;
               
@@ -156,6 +158,23 @@ export const WebSocketProvider = ({ children }) => {
                 }));
               }
               break;
+
+            case 'WAYPOINT_ADDED':
+              console.log('New waypoint added:', data.payload);
+              setWaypoints(prev => [...prev, data.payload]);
+              break;
+
+            case 'WAYPOINT_UPDATED':
+              console.log('Waypoint updated:', data.payload);
+              setWaypoints(prev => prev.map(w =>
+                w.id === data.payload.id ? data.payload : w
+              ));
+              break;
+
+            case 'WAYPOINT_REMOVED':
+              console.log('Waypoint removed:', data.payload.id);
+              setWaypoints(prev => prev.filter(w => w.id !== data.payload.id));
+              break;
           }
         } catch (error) {
           console.error('WebSocket message parse error:', error);
@@ -249,6 +268,7 @@ export const WebSocketProvider = ({ children }) => {
       vehicles,
       hazards,
       obstacles,
+      waypoints,
       routes,
       routeAlerts,
       connected,

@@ -6,6 +6,7 @@ const Notification = require('./Notification');
 const OfflineQueue = require('./OfflineQueue');
 const Obstacle = require('./Obstacle');
 const TrafficData = require('./TrafficData');
+const Waypoint = require('./Waypoint');
 
 // Define associations
 Fleet.hasMany(User, {
@@ -58,6 +59,16 @@ Obstacle.belongsTo(User, {
   as: 'reporter'
 });
 
+User.hasMany(Waypoint, {
+  foreignKey: 'reportedBy',
+  as: 'waypoints'
+});
+
+Waypoint.belongsTo(User, {
+  foreignKey: 'reportedBy',
+  as: 'reporter'
+});
+
 // Sync database
 const syncDatabase = async (options = {}) => {
   try {
@@ -78,5 +89,6 @@ module.exports = {
   OfflineQueue,
   Obstacle,
   TrafficData,
+  Waypoint,
   syncDatabase
 };
