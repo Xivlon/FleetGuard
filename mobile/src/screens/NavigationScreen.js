@@ -28,6 +28,7 @@ const COLORS = {
   text: '#FFFFFF',
   border: '#10B981',
   routeColor: '#10B981',
+  userLocation: '#10B981',
 };
 
 // Helper function to normalize coordinates from either array [lng, lat] or object {latitude, longitude}
@@ -69,6 +70,7 @@ export default function NavigationScreen({ navigation }) {
   const [dangerAlertShown, setDangerAlertShown] = useState(new Set());
   const mapRef = useRef(null);
   const lastPositionRef = useRef(null);
+  const initialCameraSetRef = useRef(false);
 
   useEffect(() => {
     if (routes[vehicleId]) {
@@ -102,7 +104,7 @@ export default function NavigationScreen({ navigation }) {
     }
   }, [routes, vehicleId]);
 
-  // Location tracking effect
+  // Location tracking effect - starts immediately, not just when route exists
   useEffect(() => {
     let subscription = null;
     
@@ -134,6 +136,17 @@ export default function NavigationScreen({ navigation }) {
           
           lastPositionRef.current = currentPosition;
           
+          // Immediately center on user location on first update
+          if (!initialCameraSetRef.current && mapRef.current) {
+            mapRef.current.animateCamera({
+              center: currentPosition,
+              heading: heading || 0,
+              pitch: 45,
+              zoom: 16,
+            }, { duration: 1000 });
+            initialCameraSetRef.current = true;
+          }
+          
           // Follow user if enabled
           if (followMe && mapRef.current) {
             mapRef.current.animateCamera({
@@ -152,16 +165,15 @@ export default function NavigationScreen({ navigation }) {
       }
     };
     
-    if (route) {
-      startLocationTracking();
-    }
+    // Start tracking immediately, not waiting for route
+    startLocationTracking();
     
     return () => {
       if (subscription) {
         subscription.remove();
       }
     };
-  }, [route, followMe, vehicleId, sendVehiclePosition]);
+  }, [followMe, vehicleId, sendVehiclePosition]);
 
   // Auto-rerouting effect - monitors obstacles and traffic
   useEffect(() => {
@@ -425,7 +437,13 @@ export default function NavigationScreen({ navigation }) {
   const routeHazards = route ? checkHazardsOnRoute() : [];
   const routeObstaclesOnPath = route ? checkObstaclesOnRoute() : [];
 
-  const mapRegion = route ? {
+  // Default map region - prefer current location if available
+  const mapRegion = currentLocation ? {
+    latitude: currentLocation.latitude,
+    longitude: currentLocation.longitude,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  } : route ? {
     latitude: (parseFloat(startLat) + parseFloat(endLat)) / 2,
     longitude: (parseFloat(startLon) + parseFloat(endLon)) / 2,
     latitudeDelta: Math.abs(parseFloat(endLat) - parseFloat(startLat)) * 2 || 0.1,
@@ -586,7 +604,7 @@ export default function NavigationScreen({ navigation }) {
           ref={mapRef}
           provider={PROVIDER_DEFAULT}
           style={styles.map}
-          region={mapRegion}
+          initialRegion={currentLocation || mapRegion}
           customMapStyle={darkMapStyle}
           onLongPress={handleMapLongPress}
         >
@@ -616,7 +634,7 @@ export default function NavigationScreen({ navigation }) {
             <Marker
               coordinate={userLocation}
               title="Your Location"
-              pinColor="#3B82F6"
+              pinColor={COLORS.userLocation}
               anchor={{ x: 0.5, y: 0.5 }}
             />
           )}
