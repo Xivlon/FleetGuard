@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import FleetDashboard from './src/screens/FleetDashboard';
 import NavigationScreen from './src/screens/NavigationScreen';
 import ReportHazardScreen from './src/screens/ReportHazardScreen';
-import ReportObstacleScreen from './src/screens/ReportObstacleScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import AnalyticsScreen from './src/screens/AnalyticsScreen';
@@ -92,6 +91,7 @@ function AppContent() {
               },
             }}
           >
+            {/* eslint-disable-next-line no-constant-condition */}
             {false ? (
               // Auth screens (disabled)
               <>
@@ -122,12 +122,7 @@ function AppContent() {
                 <Stack.Screen
                   name="ReportHazard"
                   component={ReportHazardScreen}
-                  options={{ title: 'Report Hazard' }}
-                />
-                <Stack.Screen
-                  name="ReportObstacle"
-                  component={ReportObstacleScreen}
-                  options={{ title: 'Report Obstacle' }}
+                  options={{ title: 'Report Hazard/Obstacle' }}
                 />
                 <Stack.Screen
                   name="Analytics"
