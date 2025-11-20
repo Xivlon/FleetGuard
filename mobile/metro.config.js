@@ -19,8 +19,14 @@ config.resolver = {
   ],
   // Resolve the entry point to the correct location
   resolveRequest: (context, moduleName, platform) => {
-    // If trying to import from expo/AppEntry, redirect to our custom entry point
-    if (moduleName === 'expo/AppEntry' || moduleName === './node_modules/expo/AppEntry') {
+    // If trying to import from expo/AppEntry in any form, redirect to our custom entry point
+    if (
+      moduleName === 'expo/AppEntry' ||
+      moduleName === 'expo/AppEntry.js' ||
+      moduleName === './node_modules/expo/AppEntry' ||
+      moduleName === './node_modules/expo/AppEntry.js' ||
+      moduleName.includes('node_modules/expo/AppEntry')
+    ) {
       return {
         filePath: path.resolve(projectRoot, 'index.js'),
         type: 'sourceFile',
