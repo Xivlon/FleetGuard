@@ -42,22 +42,47 @@ The command above will update `app.json` with your project ID. Also update:
 }
 ```
 
-## 📱 Build for Testing (Choose One)
+## 📱 Build for Testing
 
-### Option A: Quick Test with Expo Go (No Build Required)
+**⚠️ Important:** This app uses native modules (Sentry, Maps, Location, Notifications) that require a custom development build. **Expo Go will not work.**
 
-**Pros**: Instant, no waiting for builds
-**Cons**: Some features won't work (native modules)
+### Option A: Development Build (For Active Development)
+
+**Pros**: Full features, fast refresh, debugging tools
+**Cons**: 10-20 min initial build time
+
+#### For Android (Easier - No Apple account needed):
 
 ```bash
-npm start
+# Build development client for Android
+npm run build:development:android
 
-# Scan QR code with:
-# - iOS: Camera app → opens in Expo Go
-# - Android: Expo Go app → scan QR
+# Wait for build (~15 minutes)
+# Download APK from link provided
+# Install on Android device
+
+# Then start the dev server
+npm run dev
+
+# Open the app on your device
 ```
 
-### Option B: Preview Build (Real Testing)
+#### For iOS (Requires Apple Developer Account):
+
+```bash
+# Build development client for iOS
+npm run build:development:ios
+
+# Wait for build (~20 minutes)
+# Install via TestFlight or direct install
+
+# Then start the dev server
+npm run dev
+
+# Open the app on your device
+```
+
+### Option B: Preview Build (For Testing/Sharing)
 
 **Pros**: All features work, sharable with team
 **Cons**: 10-20 min build time

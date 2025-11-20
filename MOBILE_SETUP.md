@@ -2,14 +2,15 @@
 
 ## Important: This is a React Native mobile app that needs to run on your computer/phone
 
-Since this is a React Native app built with Expo, it **cannot run in Replit's browser**. Follow these steps to run it on your device:
+Since this is a React Native app built with Expo, it **cannot run in Replit's browser**. This app also uses native modules and **requires a custom development build** - it will not work in Expo Go.
 
 ## Prerequisites
 
-1. **Node.js** (v16 or higher) installed on your computer
-2. **Expo Go app** installed on your phone:
-   - iOS: Download from App Store
-   - Android: Download from Google Play Store
+1. **Node.js** (v20.x recommended) installed on your computer
+2. **EAS CLI** installed globally: `npm install -g eas-cli`
+3. **Expo account** - Create free account at expo.dev
+4. For iOS builds: Apple Developer account ($99/year)
+5. For Android builds: No account needed for testing
 
 ## Setup Steps
 
@@ -44,32 +45,54 @@ To your Replit backend URL:
 const BACKEND_URL = 'https://a80eda13-a54e-4a07-85d4-bde9f84e0168-00-1okal3s3r72f7.riker.replit.dev';
 ```
 
-### Step 4: Start the App
+### Step 4: Build Development Client
 
+Since the app uses native modules (Maps, Location, Sentry, Notifications), you need to build a custom development client:
+
+#### For Android (Recommended for testing):
 ```bash
-npm start
+# Login to Expo
+eas login
+
+# Initialize project (first time only)
+eas project:init
+
+# Build development client
+npm run build:development:android
+
+# Wait 10-20 minutes for build to complete
+# Download and install the APK on your Android device
 ```
 
-This will:
-- Start the Expo development server
-- Show a QR code in your terminal
-
-### Step 5: Run on Your Phone
-
-1. Open **Expo Go** app on your phone
-2. Scan the QR code shown in the terminal
-3. The app will load on your phone!
-
-## Alternative: Run on Emulator
-
-### iOS (Mac only):
+#### For iOS (Requires Apple Developer account):
 ```bash
-npm run ios
+# Build development client
+npm run build:development:ios
+
+# Wait 15-25 minutes for build to complete
+# Install via TestFlight or direct install
 ```
 
-### Android:
+### Step 5: Start Development Server
+
+After installing the development build on your device:
+
 ```bash
+npm run dev
+```
+
+This will start the Expo development server. Open the development build app on your device (not Expo Go), and it will automatically connect.
+
+### Step 6: Running on Emulator
+
+If you have Android Studio or Xcode installed:
+
+```bash
+# Android emulator
 npm run android
+
+# iOS simulator (Mac only)
+npm run ios
 ```
 
 ## Backend Server
