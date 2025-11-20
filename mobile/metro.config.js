@@ -32,6 +32,20 @@ config.resolver = {
         type: 'sourceFile',
       };
     }
+
+    // Handle imports of '../../App' from expo/AppEntry.js (when expo is at workspace root)
+    // This redirects to the mobile/App.js file
+    if (
+      (moduleName === '../../App' || moduleName === '../../App.js') &&
+      context.originModulePath &&
+      context.originModulePath.includes('expo/AppEntry')
+    ) {
+      return {
+        filePath: path.resolve(projectRoot, 'App.js'),
+        type: 'sourceFile',
+      };
+    }
+
     // Use default resolver for all other modules
     return context.resolveRequest(context, moduleName, platform);
   },
