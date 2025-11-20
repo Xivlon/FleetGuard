@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import FleetDashboard from './src/screens/FleetDashboard';
@@ -24,18 +24,30 @@ initSentry();
 
 const Stack = createStackNavigator();
 
-// Helper function to get user initials
+/**
+ * Helper function to get user initials from user object
+ * @param {Object} user - User object with optional firstName, lastName, and email
+ * @returns {string} Two-letter initials or single letter from email, defaults to 'U'
+ */
 function getInitials(user) {
-  if (user?.firstName?.length > 0 && user?.lastName?.length > 0) {
-    return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+  const firstInitial = user?.firstName?.[0];
+  const lastInitial = user?.lastName?.[0];
+  
+  if (firstInitial && lastInitial) {
+    return `${firstInitial}${lastInitial}`.toUpperCase();
   }
-  if (user?.email?.length > 0) {
+  if (user?.email?.[0]) {
     return user.email[0].toUpperCase();
   }
   return 'U';
 }
 
-// User Icon Component
+/**
+ * UserIcon component displays user initials in a circular badge
+ * @param {Object} props - Component props
+ * @param {Object} props.user - User object to extract initials from
+ * @returns {React.Component} Circular icon with user initials
+ */
 function UserIcon({ user }) {
   return (
     <View style={styles.userIconContainer}>
