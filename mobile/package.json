@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "postinstall": "node scripts/postinstall.js",
     "start": "expo start",
     "dev": "expo start --dev-client",
     "android": "expo start --android",
