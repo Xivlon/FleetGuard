@@ -720,18 +720,6 @@ export default function NavigationScreen({ navigation }) {
             pinColor={COLORS.secondary}
           />
 
-          {userLocation && (
-            <Marker
-              coordinate={userLocation}
-              title="Your Location"
-              anchor={{ x: 0.5, y: 0.5 }}
-              zIndex={20}
-              tracksViewChanges={false}
-            >
-              <OrbitMarker color={COLORS.userLocation} size={60} />
-            </Marker>
-          )}
-
           {route && route.coordinates && (
             <Polyline
               coordinates={route.coordinates
@@ -786,6 +774,19 @@ export default function NavigationScreen({ navigation }) {
               );
             }}
           />
+
+          {/* User Location Marker - Rendered LAST to appear on top of all other overlays */}
+          {userLocation && (
+            <Marker
+              coordinate={userLocation}
+              title="Your Location"
+              anchor={{ x: 0.5, y: 0.5 }}
+              zIndex={1000}
+              tracksViewChanges={false}
+            >
+              <OrbitMarker color={COLORS.userLocation} size={60} />
+            </Marker>
+          )}
         </MapView>
 
         {/* Minecraft-style Clock */}
