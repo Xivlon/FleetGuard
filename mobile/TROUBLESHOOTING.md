@@ -33,12 +33,13 @@ Require stack:
 
 ### React Version Compatibility
 
-**Current versions:**
-- Expo SDK: ~54.0.25
-- React: 19.1.0
-- React Native: 0.81.5
+**Check current versions:**
+```bash
+cd mobile
+cat package.json | grep -E '"(expo|react|react-native)"'
+```
 
-These versions are compatible. If you see warnings about React version, run:
+To verify version compatibility, run:
 ```bash
 npx expo install --check
 ```
