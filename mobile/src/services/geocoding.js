@@ -15,15 +15,22 @@ export async function geocodeLocation(locationName) {
     throw new Error('Location name is required');
   }
 
+  // Create AbortController for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
   try {
     const response = await fetch(
       `${NOMINATIM_BASE_URL}/search?format=json&q=${encodeURIComponent(locationName)}&limit=1`,
       {
+        signal: controller.signal,
         headers: {
           'User-Agent': 'FleetGuard Mobile App', // Nominatim requires a User-Agent
         },
       }
     );
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Geocoding request failed: ${response.status}`);
@@ -42,6 +49,10 @@ export async function geocodeLocation(locationName) {
       displayName: result.display_name,
     };
   } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Location search timed out. Please check your connection and try again.');
+    }
     console.error('Geocoding error:', error);
     throw error;
   }
@@ -54,15 +65,22 @@ export async function geocodeLocation(locationName) {
  * @returns {Promise<string>}
  */
 export async function reverseGeocode(latitude, longitude) {
+  // Create AbortController for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
   try {
     const response = await fetch(
       `${NOMINATIM_BASE_URL}/reverse?format=json&lat=${latitude}&lon=${longitude}`,
       {
+        signal: controller.signal,
         headers: {
           'User-Agent': 'FleetGuard Mobile App',
         },
       }
     );
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Reverse geocoding request failed: ${response.status}`);
@@ -76,6 +94,7 @@ export async function reverseGeocode(latitude, longitude) {
 
     return data.display_name;
   } catch (error) {
+    clearTimeout(timeoutId);
     console.error('Reverse geocoding error:', error);
     return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
   }
