@@ -113,37 +113,47 @@ export default function NavigationScreen({ navigation }) {
   // Location tracking effect - starts immediately, not just when route exists
   useEffect(() => {
     let subscription = null;
-    
+
     const startLocationTracking = async () => {
       try {
+        console.log('[NavigationScreen] Starting location tracking...');
         subscription = await watchPosition((location) => {
           const { latitude, longitude, coords } = location;
           const currentPosition = {
             latitude: coords?.latitude || latitude,
             longitude: coords?.longitude || longitude,
           };
-          
+
+          console.log('[NavigationScreen] Location updated:', {
+            lat: currentPosition.latitude.toFixed(6),
+            lon: currentPosition.longitude.toFixed(6),
+            accuracy: coords?.accuracy?.toFixed(2),
+          });
+
           setUserLocation(currentPosition);
-          
+
           // Calculate heading if we have a previous position
           let heading = coords?.heading;
           if (!heading && lastPositionRef.current) {
             heading = calculateHeading(lastPositionRef.current, currentPosition);
           }
-          
+
           // Send position to backend
-          sendVehiclePosition(
-            vehicleId,
-            currentPosition.latitude,
-            currentPosition.longitude,
-            coords?.speed || 0,
-            heading || 0
-          );
-          
+          if (sendVehiclePosition) {
+            sendVehiclePosition(
+              vehicleId,
+              currentPosition.latitude,
+              currentPosition.longitude,
+              coords?.speed || 0,
+              heading || 0
+            );
+          }
+
           lastPositionRef.current = currentPosition;
-          
+
           // Immediately center on user location on first update
           if (!initialCameraSetRef.current && mapRef.current) {
+            console.log('[NavigationScreen] Centering camera on initial location');
             mapRef.current.animateCamera({
               center: currentPosition,
               heading: heading || 0,
@@ -152,7 +162,7 @@ export default function NavigationScreen({ navigation }) {
             }, { duration: 1000 });
             initialCameraSetRef.current = true;
           }
-          
+
           // Follow user if enabled
           if (followMe && mapRef.current) {
             mapRef.current.animateCamera({
@@ -163,19 +173,21 @@ export default function NavigationScreen({ navigation }) {
             }, { duration: 500 });
           }
         });
-        
+
         setLocationSubscription(subscription);
+        console.log('[NavigationScreen] Location tracking started successfully');
       } catch (error) {
-        console.error('Failed to start location tracking:', error);
+        console.error('[NavigationScreen] Failed to start location tracking:', error);
         Alert.alert('Location Error', 'Failed to access location services. Please enable location permissions.');
       }
     };
-    
+
     // Start tracking immediately, not waiting for route
     startLocationTracking();
-    
+
     return () => {
       if (subscription) {
+        console.log('[NavigationScreen] Stopping location tracking');
         subscription.remove();
       }
     };
@@ -714,6 +726,7 @@ export default function NavigationScreen({ navigation }) {
               title="Your Location"
               anchor={{ x: 0.5, y: 0.5 }}
               zIndex={20}
+              tracksViewChanges={false}
             >
               <OrbitMarker color={COLORS.userLocation} size={60} />
             </Marker>
