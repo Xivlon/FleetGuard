@@ -35,7 +35,7 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
         <Svg
           width={size * 0.6}
           height={size * 0.6}
-          viewBox="0 0 3000 3000"
+          viewBox="1425 625 50 60"
           fill={color}
         >
           <G id="Regular-S">
