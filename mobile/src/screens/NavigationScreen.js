@@ -871,8 +871,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.primary,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   locationStatusContent: {
     flexDirection: 'row',
@@ -900,13 +900,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   toggleContainer: {
-    marginBottom: 8,
+    marginBottom: 16,
   },
   toggleButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 4,
+    gap: 10,
+    paddingVertical: 8,
   },
   checkbox: {
     width: 22,
@@ -931,7 +931,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   currentLocationDisplay: {
-    marginBottom: 8,
+    marginBottom: 16,
   },
   coordText: {
     color: COLORS.primary,
@@ -939,7 +939,7 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   inputContainer: {
-    padding: 8,
+    padding: 16,
     backgroundColor: COLORS.card,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.primary,
@@ -948,12 +948,12 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 13,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   coordRow: {
     flexDirection: 'row',
-    gap: 6,
-    marginBottom: 8,
+    gap: 8,
+    marginBottom: 12,
   },
   input: {
     flex: 1,
@@ -968,10 +968,10 @@ const styles = StyleSheet.create({
   },
   calculateButton: {
     backgroundColor: COLORS.primary,
-    padding: 10,
+    padding: 12,
     borderRadius: 6,
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 12,
   },
   calculateButtonText: {
     color: COLORS.background,
@@ -981,7 +981,7 @@ const styles = StyleSheet.create({
   routeInfoContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: 8,
+    padding: 16,
     backgroundColor: COLORS.card,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.primary,
@@ -1007,21 +1007,21 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderTopWidth: 2,
     borderTopColor: COLORS.primary,
-    padding: 12,
+    padding: 16,
   },
   instructionsTitle: {
     color: COLORS.primary,
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   instructionsList: {
     maxHeight: 120,
   },
   instructionItem: {
     flexDirection: 'row',
-    padding: 12,
-    marginBottom: 8,
+    padding: 16,
+    marginBottom: 12,
     backgroundColor: COLORS.background,
     borderRadius: 8,
     borderWidth: 1,
@@ -1124,8 +1124,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   geocodedCoordsDisplay: {
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 12,
   },
   geocodedCoordsText: {
     color: COLORS.primary,
