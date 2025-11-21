@@ -43,14 +43,14 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
         height={size}
         viewBox="0 0 100 100"
       >
-        {/* Outer circle border */}
+        {/* Outer circle border with visible fill */}
         <Circle
           cx="50"
           cy="50"
           r="48"
           stroke={color}
           strokeWidth={borderWidth}
-          fill="none"
+          fill="rgba(255, 255, 255, 0.9)"
         />
         
         {/* Inner orbit icon - scaled and centered */}
