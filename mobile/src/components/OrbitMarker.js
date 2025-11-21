@@ -11,6 +11,9 @@ import Svg, { Path, G } from 'react-native-svg';
 export default function OrbitMarker({ color = '#10B981', size = 40 }) {
   // Calculate border width for glow effect
   const borderWidth = Math.max(2, size * 0.05);
+  
+  // Calculate icon size - make it larger for better visibility
+  const iconSize = size * 0.7;
 
   return (
     <View style={{
@@ -27,13 +30,14 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
         borderRadius: size / 2,
         borderWidth: borderWidth,
         borderColor: color,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: '#000000',
+        opacity: 0.7,
       }} />
       {/* Inner SVG icon */}
       <Svg
-        width={size * 0.5}
-        height={size * 0.5}
-        viewBox="1420 625 65 75"
+        width={iconSize}
+        height={iconSize}
+        viewBox="1418 623 70 80"
         fill={color}
       >
         <G id="Regular-S">
