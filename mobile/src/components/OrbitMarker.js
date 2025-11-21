@@ -33,9 +33,9 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
       {/* Inner SVG icon */}
       <View style={styles.iconContainer}>
         <Svg
-          width={size * 0.6}
-          height={size * 0.6}
-          viewBox="1425 625 50 60"
+          width={size * 0.5}
+          height={size * 0.5}
+          viewBox="1428 626 45 55"
           fill={color}
         >
           <G id="Regular-S">
