@@ -5,16 +5,28 @@ import Svg, { Path, G } from 'react-native-svg';
 /**
  * OrbitMarker component
  * Displays the orbit.svg icon as a custom marker on the map
+ *
+ * Note: Add extra padding to prevent clipping by react-native-maps Marker component
  */
 export default function OrbitMarker({ color = '#10B981', size = 40 }) {
+  // Calculate border width for glow effect
+  const borderWidth = Math.max(2, size * 0.05);
+  // Add padding to accommodate border and prevent clipping
+  const padding = borderWidth * 2;
+  const totalSize = size + padding * 2;
+
   return (
-    <View style={[styles.container, { width: size, height: size }]}>
+    <View style={[styles.container, {
+      width: totalSize,
+      height: totalSize,
+      padding: padding,
+    }]}>
       {/* Outer glow/border circle for better visibility */}
-      <View style={[styles.outerCircle, { 
-        width: size, 
-        height: size, 
+      <View style={[styles.outerCircle, {
+        width: size,
+        height: size,
         borderRadius: size / 2,
-        borderWidth: Math.max(2, size * 0.05),
+        borderWidth: borderWidth,
         borderColor: color,
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
       }]} />
