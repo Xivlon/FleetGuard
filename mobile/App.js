@@ -151,7 +151,7 @@ function AppContent() {
                 <Stack.Screen
                   name="Navigation"
                   component={NavigationScreen}
-                  options={{ title: 'Navigation' }}
+                  options={{ headerShown: false }}
                 />
                 <Stack.Screen
                   name="FleetDashboard"

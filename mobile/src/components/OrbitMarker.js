@@ -41,6 +41,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'transparent',
     position: 'relative',
+    overflow: 'visible',
   },
   outerCircle: {
     position: 'absolute',
@@ -51,5 +52,6 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'visible',
   },
 });
