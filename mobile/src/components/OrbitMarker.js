@@ -28,29 +28,37 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
       alignItems: 'center',
       justifyContent: 'center',
     }}>
-      {/* Outer background circle for visibility */}
+      {/* Outer glow effect for better visibility */}
       <View style={{
         position: 'absolute',
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        width: size + 8,
+        height: size + 8,
+        borderRadius: (size + 8) / 2,
+        backgroundColor: 'rgba(16, 185, 129, 0.3)',
       }} />
-      
+
       {/* Inner SVG icon with both circle border and orbit symbol */}
       <Svg
         width={size}
         height={size}
         viewBox="0 0 100 100"
       >
+        {/* White background circle */}
+        <Circle
+          cx="50"
+          cy="50"
+          r="48"
+          fill="white"
+        />
+
         {/* Outer circle border with visible fill */}
         <Circle
           cx="50"
           cy="50"
           r="48"
           stroke={color}
-          strokeWidth={borderWidth}
-          fill="rgba(255, 255, 255, 0.9)"
+          strokeWidth={borderWidth * 1.5}
+          fill="none"
         />
         
         {/* Inner orbit icon - scaled and centered */}
