@@ -23,10 +23,16 @@ try {
     process.exit(0);
   }
 
-  // Check if index.flow already exists
+  // Check if index.flow already exists and has correct content
   if (fs.existsSync(indexFlowPath)) {
-    console.log('index.flow already exists, skipping postinstall fix');
-    process.exit(0);
+    const existingContent = fs.readFileSync(indexFlowPath, 'utf8');
+    const expectedContent = 'module.exports = require("./index.flow.js");';
+    if (existingContent.trim() === expectedContent.trim()) {
+      console.log('index.flow already fixed, skipping');
+      process.exit(0);
+    }
+    // If content is different, we'll overwrite it
+    console.log('index.flow exists but has incorrect content, fixing...');
   }
 
   // Check if index.flow.js exists
@@ -42,7 +48,11 @@ try {
   console.log('✓ Fixed metro-config: created index.flow redirect');
   process.exit(0);
 } catch (error) {
-  console.error('Error in postinstall script:', error);
+  console.error('⚠ Error in postinstall script:', error.message);
+  console.error('If you encounter bundling errors with metro-config, try:');
+  console.error('  1. Delete node_modules and package-lock.json');
+  console.error('  2. Run: npm install');
+  console.error('  3. Run: npx expo start --clear');
   // Don't fail the install if this script fails
   process.exit(0);
 }
