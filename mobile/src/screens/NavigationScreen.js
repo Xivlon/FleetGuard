@@ -713,6 +713,7 @@ export default function NavigationScreen({ navigation }) {
               coordinate={userLocation}
               title="Your Location"
               anchor={{ x: 0.5, y: 0.5 }}
+              zIndex={20}
             >
               <OrbitMarker color={COLORS.userLocation} size={60} />
             </Marker>
