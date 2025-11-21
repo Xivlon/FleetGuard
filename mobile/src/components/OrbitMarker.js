@@ -57,6 +57,7 @@ const styles = StyleSheet.create({
   },
   outerCircle: {
     position: 'absolute',
+    zIndex: 1,
   },
   iconContainer: {
     position: 'absolute',
@@ -65,5 +66,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'visible',
+    zIndex: 2,
   },
 });
