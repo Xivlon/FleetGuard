@@ -20,6 +20,10 @@ export default function OrbitMarker({
   borderOffsetX = -15,
   borderOffsetY = -15,
   // ViewBox unit offsets (use the same coordinate system as the SVG: ORIGINAL_VIEWBOX_X/Y)
+  glowOffsetUnitsX = 0,
+  glowOffsetUnitsY = 0,
+  borderOffsetUnitsX = 0,
+  borderOffsetUnitsY = 0,
 }) {
   console.log(
     '[OrbitMarker] color:',
