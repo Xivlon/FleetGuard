@@ -30,6 +30,8 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
   // Scale factor: We want the icon to be approximately 60px in the 150x150 viewBox
   // 60 / 24 (original SVG size) = 2.5 (target size / original size)
   const ICON_SCALE = 2.5;
+  // Border circle radius: approximately 64% of the viewBox radius for good visual balance
+  const BORDER_RADIUS = VIEWBOX_SIZE * 0.32; // 48px in a 150x150 viewBox
 
   return (
     <View style={[styles.container, { width: glowSize, height: glowSize }]}>
@@ -64,7 +66,7 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
           <Circle
             cx={VIEWBOX_SIZE / 2}
             cy={VIEWBOX_SIZE / 2}
-            r="48"
+            r={BORDER_RADIUS}
             stroke={color}
             strokeWidth={borderWidth * 1.5}
             fill="none"
