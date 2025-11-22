@@ -14,10 +14,10 @@ export default function OrbitMarker({
   color = '#10B981',
   size = 40,
   // Pixel offsets for the RN glow view (easy: provide px)
-  glowOffsetX = -15,
+  glowOffsetX = -14,
   glowOffsetY = -15,
   // Pixel offsets for the SVG outer ring (px). These are converted to viewBox units.
-  borderOffsetX = -14,
+  borderOffsetX = -14.6,
   borderOffsetY = -16,
   // ViewBox unit offsets (use the same coordinate system as the SVG: ORIGINAL_VIEWBOX_X/Y)
   glowOffsetUnitsX = 0,
@@ -54,8 +54,8 @@ export default function OrbitMarker({
 
   // Original viewBox coordinates from orbit.svg (Lucide orbit icon)
   // Using 27 as the reference point for positioning (intentionally set for proper alignment)
-  const ORIGINAL_VIEWBOX_X = 27;
-  const ORIGINAL_VIEWBOX_Y = 27;
+  const ORIGINAL_VIEWBOX_X = 25;
+  const ORIGINAL_VIEWBOX_Y = 25;
 
   // Icon positioning and scale within the normalized viewBox
   const VIEWBOX_SIZE = 100;
