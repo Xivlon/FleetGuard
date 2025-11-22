@@ -61,8 +61,8 @@ export default function OrbitMarker({ color = '#10B981', size = 20 }) {
 
           {/* Outer circle border with visible fill */}
           <Circle
-            cx="30"
-            cy="30"
+            cx="0"
+            cy="0"
             r="48"
             stroke={color}
             strokeWidth={borderWidth * 1.5}
