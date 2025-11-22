@@ -58,7 +58,7 @@ export default function OrbitMarker({
 
   // Calculate border width for glow effect (px)
   const borderWidth = Math.max(2, size * 0.05);
-  const glowSize = size + 0;
+  const glowSize = size + 16;
 
   // Original viewBox coordinates from orbit.svg (Lucide orbit icon)
   // Using 25 as the reference point for positioning (intentionally set for proper alignment)
