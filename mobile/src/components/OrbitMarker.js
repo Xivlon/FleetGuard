@@ -17,17 +17,17 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
   const glowSize = size + 8;
 
   // Original viewBox coordinates from orbit.svg (Lucide orbit icon)
-  // The orbit icon is centered at (30, 30) in the 24x24 SVG viewBox
-  const ORIGINAL_VIEWBOX_X = 27;
-  const ORIGINAL_VIEWBOX_Y = 27;
+  // The orbit icon is centered at (12, 12) in the 24x24 SVG viewBox
+  const ORIGINAL_VIEWBOX_X = 12;
+  const ORIGINAL_VIEWBOX_Y = 12;
 
   // Icon positioning and scale within the normalized viewBox
   // The new SVG is already centered and properly sized at 24x24
-  // We use a 150x150 viewBox and center the icon within it
+  // We use a 100x100 viewBox and center the icon within it
   const VIEWBOX_SIZE = 100;
-  const ICON_TRANSLATE_X = VIEWBOX_SIZE / 1.5; // Center position in viewBox
-  const ICON_TRANSLATE_Y = VIEWBOX_SIZE / 1.5; // Center position in viewBox
-  // Scale factor: We want the icon to be approximately 60px in the 150x150 viewBox
+  const ICON_TRANSLATE_X = VIEWBOX_SIZE / 2; // Center position in viewBox (50, 50)
+  const ICON_TRANSLATE_Y = VIEWBOX_SIZE / 2; // Center position in viewBox (50, 50)
+  // Scale factor: We want the icon to be approximately 60px in the 100x100 viewBox
   // 60 / 24 (original SVG size) = 2.5 (target size / original size)
   const ICON_SCALE = 2.5;
   // Border circle radius: approximately 64% of the viewBox radius for good visual balance
