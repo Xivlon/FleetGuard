@@ -21,6 +21,7 @@ import WaypointMarker from '../components/WaypointMarker';
 import MinecraftClock from '../components/MinecraftClock';
 import WaypointModal from '../components/WaypointModal';
 import OrbitMarker from '../components/OrbitMarker';
+import SimpleLocationMarker from '../components/SimpleLocationMarker';
 
 const COLORS = {
   primary: '#10B981',
@@ -776,17 +777,19 @@ export default function NavigationScreen({ navigation }) {
           />
 
           {/* User Location Marker - Rendered LAST to appear on top of all other overlays */}
-          {userLocation && (
-            <Marker
-              coordinate={userLocation}
-              title="Your Location"
-              anchor={{ x: 0.5, y: 0.5 }}
-              zIndex={1000}
-              tracksViewChanges={false}
-            >
-              <OrbitMarker color={COLORS.userLocation} size={60} />
-            </Marker>
-          )}
+          {userLocation && (() => {
+            console.log('[NavigationScreen] Rendering user location marker at:', userLocation);
+            return (
+              <Marker
+                coordinate={userLocation}
+                title="Your Location"
+                anchor={{ x: 0.5, y: 0.5 }}
+                zIndex={1000}
+              >
+                <SimpleLocationMarker color={COLORS.userLocation} size={60} />
+              </Marker>
+            );
+          })()}
         </MapView>
 
         {/* Minecraft-style Clock */}
