@@ -717,7 +717,7 @@ export default function NavigationScreen({ navigation }) {
           {userLocation && (
             <Marker
               coordinate={userLocation}
-              anchor={{ x: 0.5, y: 0.5 }}  // center of size x size box
+              anchor={{ x: 1, y: 1 }}  // center of size x size box
             >
               <UserLocationMarkerSvg color={COLORS.userLocation} size={50} />
             </Marker>
