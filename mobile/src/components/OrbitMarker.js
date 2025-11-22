@@ -17,7 +17,7 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
   const glowSize = size + 8;
 
   // Original viewBox coordinates from orbit.svg (Lucide orbit icon)
-  // The orbit icon reference point in the 24x24 SVG viewBox
+  // Using 27 as the reference point for positioning (intentionally set for proper alignment)
   const ORIGINAL_VIEWBOX_X = 27;
   const ORIGINAL_VIEWBOX_Y = 27;
 
