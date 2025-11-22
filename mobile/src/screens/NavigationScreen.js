@@ -784,9 +784,11 @@ export default function NavigationScreen({ navigation }) {
                 coordinate={userLocation}
                 title="Your Location"
                 anchor={{ x: 0.5, y: 0.5 }}
+                centerOffset={{ x: 0, y: 0 }}
                 zIndex={1000}
+                flat={false}
               >
-                <SimpleLocationMarker color={COLORS.userLocation} size={60} />
+                <SimpleLocationMarker color={COLORS.userLocation} size={50} />
               </Marker>
             );
           })()}
