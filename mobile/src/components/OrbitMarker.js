@@ -13,11 +13,6 @@ export default function OrbitMarker({
   const VIEWBOX_SIZE = 100;
   const CENTER = VIEWBOX_SIZE / 2; // (50, 50)
 
-  // Center of the original Lucide 24x24 orbit icon
-  const ORIGINAL_VIEWBOX_X = 12;
-  const ORIGINAL_VIEWBOX_Y = 12;
-
-  const ICON_SCALE = 3.0;
   const RING_RADIUS = VIEWBOX_SIZE * 0.35;
   const RING_STROKE_WIDTH = 4;
 
@@ -61,49 +56,44 @@ export default function OrbitMarker({
             fill="none"
           />
 
-          {/* Orbit arcs */}
+          {/* Orbit arcs - drawn relative to center */}
           <Path
-            d="M20.341 6.484A10 10 0 0 1 10.266 21.85"
+            d="M 32.1 29.7 A 15 15 0 0 1 34.6 57.8"
             fill="none"
             stroke={color}
-            strokeWidth="2"
+            strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
-            transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
           <Path
-            d="M3.659 17.516A10 10 0 0 1 13.74 2.152"
+            d="M 67.9 70.3 A 15 15 0 0 1 65.4 42.2"
             fill="none"
             stroke={color}
-            strokeWidth="2"
+            strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
-            transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
 
           {/* Center circle */}
           <Circle
-            cx="12"
-            cy="12"
-            r="3"
+            cx={CENTER}
+            cy={CENTER}
+            r="4.5"
             fill={color}
-            transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
 
           {/* Satellites */}
           <Circle
-            cx="19"
-            cy="5"
-            r="2"
+            cx="60.5"
+            cy="39.5"
+            r="3"
             fill={color}
-            transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
           <Circle
-            cx="5"
-            cy="19"
-            r="2"
+            cx="39.5"
+            cy="60.5"
+            r="3"
             fill={color}
-            transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
         </Svg>
       </View>
