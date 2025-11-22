@@ -6,38 +6,36 @@ import Svg, { Circle, Path } from 'react-native-svg';
  * OrbitMarker component
  * Displays a custom marker on the map to indicate user location
  *
- * Orbit icon is centered in the SVG.
- * Outer ring outlines the glow.
- * Glow is centered and not clipped.
+ * - Orbit icon centered in the SVG
+ * - Outer ring centered on the orbit
+ * - Glow centered on both, not clipped
  */
 export default function OrbitMarker({
   color = '#10B981',
   size = 40,
 }) {
   // How much bigger the glow is than the SVG icon (in pixels)
-  const glowPadding = 30;              // tweak this if you want more/less glow
+  const glowPadding = 16;              // tweak this to grow/shrink the glow
   const glowSize = size + glowPadding; // outer RN container & glow circle size
 
-  // SVG viewBox: simple, fixed, centered system
+  // Simple SVG coordinate system
   const VIEWBOX_SIZE = 100;
-  const CENTER = VIEWBOX_SIZE / 2; // 50
+  const CENTER = VIEWBOX_SIZE / 2; // 50,50 is the center
 
-  // Original Lucide orbit SVG is ~centered at these coords in its own 24x24 system
+  // Original Lucide orbit SVG is centered around (12, 12) in a 24x24 box
   const ORIGINAL_VIEWBOX_X = 12;
   const ORIGINAL_VIEWBOX_Y = 12;
 
-  // How big the orbit icon should be within the 100x100 viewBox
+  // How large the orbit icon appears inside the 100x100 viewBox
   const ICON_SCALE = 3.0; // increase/decrease to change icon size relative to ring
 
   // Ring radius in viewBox units; chosen to sit just inside the glow
-  const RING_RADIUS = VIEWBOX_SIZE * 0.34; // 34 units in a 100x100 viewBox
-
-  // Ring stroke in viewBox units (kept simple; tweak by eye)
-  const RING_STROKE_WIDTH = 4;
+  const RING_RADIUS = VIEWBOX_SIZE * 0.34; // 34 in a 100x100 viewBox
+  const RING_STROKE_WIDTH = 4; // in viewBox units; tweak by eye
 
   return (
     <View style={[styles.container, { width: glowSize, height: glowSize }]}>
-      {/* Glow: centered, no transforms, big enough not to clip */}
+      {/* Glow: centered, no transforms, large enough not to clip */}
       <View
         style={[
           styles.glowEffect,
@@ -130,7 +128,7 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'visible', // lets glow extend past bounds
+    overflow: 'visible', // allows glow to extend past bounds
   },
   glowEffect: {
     position: 'absolute',
