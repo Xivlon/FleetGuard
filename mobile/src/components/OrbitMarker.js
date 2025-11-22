@@ -14,11 +14,11 @@ export default function OrbitMarker({
   color = '#10B981',
   size = 40,
   // Pixel offsets for the RN glow view (easy: provide px)
-  glowOffsetX = 0,
-  glowOffsetY = 0,
+  glowOffsetX = -5,
+  glowOffsetY = -5,
   // Pixel offsets for the SVG outer ring (px). These are converted to viewBox units.
-  borderOffsetX = 0,
-  borderOffsetY = 0,
+  borderOffsetX = -5,
+  borderOffsetY = -5,
   // ViewBox unit offsets (use the same coordinate system as the SVG: ORIGINAL_VIEWBOX_X/Y)
   // e.g. pass small positive/negative numbers around the ORIGINAL_VIEWBOX_* values to nudge
   // the glow/ring in the SVG coordinate space directly.
