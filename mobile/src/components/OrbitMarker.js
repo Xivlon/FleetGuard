@@ -24,7 +24,7 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
   // Icon positioning and scale within the normalized viewBox
   // The new SVG is already centered and properly sized at 24x24
   // We use a 150x150 viewBox and center the icon within it
-  const VIEWBOX_SIZE = 150;
+  const VIEWBOX_SIZE = 250;
   const ICON_TRANSLATE_X = VIEWBOX_SIZE / 1.5; // Center position in viewBox
   const ICON_TRANSLATE_Y = VIEWBOX_SIZE / 1.5; // Center position in viewBox
   // Scale factor: We want the icon to be approximately 60px in the 150x150 viewBox
