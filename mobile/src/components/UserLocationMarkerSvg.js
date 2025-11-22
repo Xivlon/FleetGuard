@@ -5,7 +5,7 @@ export default function UserLocationMarkerSvg({
   color = '#10B981',
   size = 40, // total marker size in pixels; map will see ONLY this box
 }) {
-  const VIEWBOX_SIZE = 100;
+  const VIEWBOX_SIZE = 200;
   const CENTER = VIEWBOX_SIZE / 2; // 50
 
   const ORIGINAL_VIEWBOX_X = 12;
