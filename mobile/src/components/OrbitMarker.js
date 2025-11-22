@@ -15,7 +15,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
  */
 export default function OrbitMarker({
   color = '#10B981',
-  size = 40,
+  size = 50,
   // Pixel offsets for the RN glow view (easy: provide px)
   glowOffsetX = -14,
   glowOffsetY = -15,
@@ -29,7 +29,7 @@ export default function OrbitMarker({
   borderOffsetUnitsY = 0,
   // New: padding in viewBox units to expand the viewBox equally on all sides.
   // Default 0 (no expansion). Increase to add whitespace while preserving pixel positions/sizes.
-  viewBoxPadding = 10,
+  viewBoxPadding = 40,
 }) {
   console.log(
     '[OrbitMarker] color:',
