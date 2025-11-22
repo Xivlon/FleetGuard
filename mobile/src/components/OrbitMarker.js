@@ -15,7 +15,7 @@ export default function OrbitMarker({
   size = 40,
 }) {
   // How much bigger the glow is than the SVG icon (in pixels)
-  const glowPadding = 16;              // tweak this if you want more/less glow
+  const glowPadding = 30;              // tweak this if you want more/less glow
   const glowSize = size + glowPadding; // outer RN container & glow circle size
 
   // SVG viewBox: simple, fixed, centered system
