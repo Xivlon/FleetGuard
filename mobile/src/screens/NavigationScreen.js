@@ -77,6 +77,15 @@ export default function NavigationScreen({ navigation }) {
   const mapRef = useRef(null);
   const lastPositionRef = useRef(null);
   const initialCameraSetRef = useRef(false);
+  // isLockingOntoLocation: true while we're trying to get a fix (searching)
+  const isLockingOntoLocation = (
+  permissionStatus === 'checking' ||
+  (permissionStatus === 'granted' && !currentLocation) ||
+  (currentLocation && currentLocation.accuracy && currentLocation.accuracy > 100) // tune threshold
+   );   
+  // isLocked: stable/healthy fix (we'll spin when locked)
+  const isLocked = !isLockingOntoLocation && currentLocation != null && (currentLocation.accuracy === undefined || currentLocation.accuracy <= 100);
+        
 
   useEffect(() => {
     if (routes[vehicleId]) {
@@ -712,19 +721,6 @@ export default function NavigationScreen({ navigation }) {
               );
             }}
           />
-
-        // --- inside NavigationScreen component, compute locking/locked (place near other derived state) ---
-          // isLockingOntoLocation: true while we're trying to get a fix (searching)
-          const isLockingOntoLocation = (
-            permissionStatus === 'checking' ||
-            (permissionStatus === 'granted' && !currentLocation) ||
-            (currentLocation && currentLocation.accuracy && currentLocation.accuracy > 100) // tune threshold
-          );
-        
-          // isLocked: stable/healthy fix (we'll spin when locked)
-          const isLocked = !isLockingOntoLocation && currentLocation != null && (currentLocation.accuracy === undefined || currentLocation.accuracy <= 100);
-        
-        // --- replace your previous user-location Marker with this ---
         {userLocation && (
           <Marker coordinate={userLocation} anchor={{ x: 0.5, y: 0.5 }}>
             <UserLocationMarkerSvg
