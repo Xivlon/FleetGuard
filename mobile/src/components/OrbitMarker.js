@@ -17,7 +17,7 @@ export default function OrbitMarker({
   glowOffsetX = -14,
   glowOffsetY = -15,
   // Pixel offsets for the SVG outer ring (px). These are converted to viewBox units.
-  borderOffsetX = -14.9,
+  borderOffsetX = -15,
   borderOffsetY = -15.9,
   // ViewBox unit offsets (use the same coordinate system as the SVG: ORIGINAL_VIEWBOX_X/Y)
   glowOffsetUnitsX = 0,
