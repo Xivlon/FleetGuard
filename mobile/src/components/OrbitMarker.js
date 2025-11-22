@@ -23,9 +23,10 @@ export default function OrbitMarker({ color = '#10B981', size = 20 }) {
 
   // Icon positioning and scale within the normalized 0-100 viewBox
   // SVG transforms apply right-to-left, so our transform string:
-  //   "translate(25, 20) scale(0.75) translate(-1415, -620)"
+  //   "translate(0, 0) scale(0.75) translate(-1415, -620)"
   // applies in this sequence: 1) move to origin, 2) scale down, 3) position in viewBox
-  // Result: icon positioned at (25, 20) to (72.25, 67.25) within the 100x100 viewBox
+  // Result: icon positioned at (0, 0) to (47.25, 47.25) within the 100x100 viewBox
+  // Center of icon: (23.625, 23.625)
   const ICON_TRANSLATE_X = 0;
   const ICON_TRANSLATE_Y = 0;
   const ICON_SCALE = 0.75;
@@ -61,8 +62,8 @@ export default function OrbitMarker({ color = '#10B981', size = 20 }) {
 
           {/* Outer circle border with visible fill */}
           <Circle
-            cx="30"
-            cy="30"
+            cx="23.625"
+            cy="23.625"
             r="48"
             stroke={color}
             strokeWidth={borderWidth * 1.5}
