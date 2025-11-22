@@ -9,8 +9,12 @@ import { View, StyleSheet } from 'react-native';
 export default function SimpleLocationMarker({ color = '#10B981', size = 40 }) {
   console.log('[SimpleLocationMarker] Rendering with color:', color, 'size:', size);
 
+  // Add extra padding to prevent shadow clipping - shadows can extend up to 8-10px
+  const padding = 16;
+  const containerSize = size + padding * 2;
+
   return (
-    <View style={[styles.container, { width: size + 8, height: size + 8 }]}>
+    <View style={[styles.container, { width: containerSize, height: containerSize }]}>
       {/* Outer glow/pulse effect */}
       <View style={[
         styles.outerCircle,
