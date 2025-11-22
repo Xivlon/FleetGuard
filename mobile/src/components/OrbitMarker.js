@@ -24,6 +24,7 @@ export default function OrbitMarker({
   glowOffsetUnitsY = 0,
   borderOffsetUnitsX = 0,
   borderOffsetUnitsY = 0,
+  viewBoxPadding = 1,
 }) {
   console.log(
     '[OrbitMarker] color:',
@@ -68,10 +69,16 @@ export default function OrbitMarker({
   const unitToPixel = size / VIEWBOX_SIZE;
   const viewCenter = VIEWBOX_SIZE / 2;
 
-  // Base offset (units) from the viewBox center to where the icon is placed
-  const baseOffsetUnitsX = ICON_TRANSLATE_X - viewCenter;
-  const baseOffsetUnitsY = ICON_TRANSLATE_Y - viewCenter;
+  // Expand the viewBox evenly on all sides by `viewBoxPadding` units
+  const newViewboxSize = VIEWBOX_SIZE + 2 * (viewBoxPadding || 0);
+  // minX/minY so expansion is centered around the original center
+  const minX = viewCenter - newViewboxSize / 2;
+  const minY = viewCenter - newViewboxSize / 2;
 
+  // Because the SVG now maps newViewboxSize -> `size` pixels,
+  // pixels-per-unit changes and we must account for that:
+  const unitToPixel = newViewboxSize > 0 ? size / newViewboxSize : size / VIEWBOX_SIZE;
+  const scaleAdjust = newViewboxSize / VIEWBOX_SIZE; // how many times larger the viewBox got
   // Combine base offset with user-supplied unit nudges for the glow (in viewBox units)
   const totalGlowOffsetUnitsX = baseOffsetUnitsX + (glowOffsetUnitsX || 0);
   const totalGlowOffsetUnitsY = baseOffsetUnitsY + (glowOffsetUnitsY || 0);
@@ -133,22 +140,22 @@ export default function OrbitMarker({
             strokeLinejoin="round"
             transform={`translate(${ICON_TRANSLATE_X}, ${ICON_TRANSLATE_Y}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
-          <Path
+        <Path
             d="M3.659 17.516A10 10 0 0 1 13.74 2.152"
             fill="none"
             stroke={color}
-            strokeWidth="2"
+            strokeWidth={adjustedPathStrokeUnits}
             strokeLinecap="round"
             strokeLinejoin="round"
-            transform={`translate(${ICON_TRANSLATE_X}, ${ICON_TRANSLATE_Y}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
-          />
-          {/* Center circle */}
-          <Circle
+            transform={`translate(${ICON_TRANSLATE_X}, ${ICON_TRANSLATE_Y}) scale(${adjustedIconScale}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+         />
+        {/* Center circle */}
+        <Circle
             cx="12"
             cy="12"
             r="3"
             fill={color}
-            transform={`translate(${ICON_TRANSLATE_X}, ${ICON_TRANSLATE_Y}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            transform={`translate(${ICON_TRANSLATE_X}, ${ICON_TRANSLATE_Y}) scale(${adjustedIconScale}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
           {/* Satellite circles */}
           <Circle
