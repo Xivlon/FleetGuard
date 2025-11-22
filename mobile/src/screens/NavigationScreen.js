@@ -301,7 +301,7 @@ export default function NavigationScreen({ navigation }) {
           );
           return;
         } finally {
-          setGeocoding(false);
+            setGeocoding(false);
         }
       } else {
         // Use manual coordinates
