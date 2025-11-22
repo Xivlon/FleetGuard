@@ -9,7 +9,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
  * IMPORTANT: SVG rendering can be unreliable in react-native-maps Marker components.
  * This component uses a fallback approach with proper container sizing and visibility properties.
  */
-export default function OrbitMarker({ color = '#10B981', size = 20 }) {
+export default function OrbitMarker({ color = '#10B981', size = 40 }) {
   console.log('[OrbitMarker] Rendering with color:', color, 'size:', size);
 
   // Calculate border width for glow effect
@@ -56,7 +56,7 @@ export default function OrbitMarker({ color = '#10B981', size = 20 }) {
         <Svg
           width={size}
           height={size}
-          viewBox="0 0 100 100"
+          viewBox="0 0 150 150"
           style={styles.svg}
         >
 
