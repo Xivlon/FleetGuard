@@ -6,28 +6,24 @@ export default function OrbitMarker({
   color = '#10B981',
   size = 40,
 }) {
-  // Slightly larger glow container than the SVG icon
-  const glowPadding = 16;              // you can tweak this
+  // Size of the whole marker box that the Marker will render
+  const glowPadding = 20;              // how much bigger the glow is than the SVG
   const glowSize = size + glowPadding; // outer container and glow size
 
-  // Simple SVG coordinate system
   const VIEWBOX_SIZE = 100;
-  const CENTER = VIEWBOX_SIZE / 2; // 50,50
+  const CENTER = VIEWBOX_SIZE / 2; // (50, 50)
 
-  // Original Lucide orbit icon center (24x24 icon)
+  // Center of the original Lucide 24x24 orbit icon
   const ORIGINAL_VIEWBOX_X = 12;
   const ORIGINAL_VIEWBOX_Y = 12;
 
-  // How large the orbit icon appears inside the 100x100 viewBox
   const ICON_SCALE = 3.0;
-
-  // Ring radius in viewBox units
-  const RING_RADIUS = VIEWBOX_SIZE * 0.34; // tweak if needed
+  const RING_RADIUS = VIEWBOX_SIZE * 0.35;
   const RING_STROKE_WIDTH = 4;
 
   return (
     <View style={[styles.container, { width: glowSize, height: glowSize }]}>
-      {/* Glow: full-size circle, centered, no transforms */}
+      {/* Glow: centered, fills the whole container */}
       <View
         style={[
           styles.glow,
@@ -40,10 +36,10 @@ export default function OrbitMarker({
         ]}
       />
 
-      {/* Centered SVG icon + ring */}
+      {/* Icon: centered square inside the glow */}
       <View
         style={[
-          styles.iconContainer,
+          styles.iconBox,
           {
             width: size,
             height: size,
@@ -55,7 +51,7 @@ export default function OrbitMarker({
           height={size}
           viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
         >
-          {/* Outer ring, centered on orbit */}
+          {/* Outer ring */}
           <Circle
             cx={CENTER}
             cy={CENTER}
@@ -94,7 +90,7 @@ export default function OrbitMarker({
             transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
 
-          {/* Satellite circles */}
+          {/* Satellites */}
           <Circle
             cx="19"
             cy="5"
@@ -116,18 +112,16 @@ export default function OrbitMarker({
 }
 
 const styles = StyleSheet.create({
-  // This is what react-native-maps (or your parent) sees as "the marker view"
+  // This is the view the Map Marker uses
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'visible', // allow glow to extend
+    overflow: 'visible',
   },
-  // Full-size glow, sitting directly under iconContainer
   glow: {
     position: 'absolute',
   },
-  // Holds the SVG, centered inside container
-  iconContainer: {
+  iconBox: {
     alignItems: 'center',
     justifyContent: 'center',
   },
