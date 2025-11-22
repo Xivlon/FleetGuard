@@ -7,7 +7,7 @@ export default function UserLocationMarkerSvg({
 }) {
   // We'll draw inside a slightly smaller inner box (safe area)
   const VIEWBOX_SIZE = 100;
-  const CENTER = VIEWBOX_SIZE / 2; // 50
+  const CENTER = VIEWBOX_SIZE / 3; // 50
 
   // Margin from the edge so nothing touches the 0/100 borders
   const MARGIN = 8; // increase if still clipped
