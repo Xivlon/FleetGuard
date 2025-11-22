@@ -12,13 +12,13 @@ import Svg, { Circle, Path } from 'react-native-svg';
  */
 export default function OrbitMarker({
   color = '#10B981',
-  size = 30,
+  size = 40,
   // Pixel offsets for the RN glow view (easy: provide px)
   glowOffsetX = -15,
   glowOffsetY = -15,
   // Pixel offsets for the SVG outer ring (px). These are converted to viewBox units.
-  borderOffsetX = -20,
-  borderOffsetY = -20,
+  borderOffsetX = -17,
+  borderOffsetY = -17,
   // ViewBox unit offsets (use the same coordinate system as the SVG: ORIGINAL_VIEWBOX_X/Y)
   glowOffsetUnitsX = 0,
   glowOffsetUnitsY = 0,
