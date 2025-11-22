@@ -26,8 +26,8 @@ export default function OrbitMarker({ color = '#10B981', size = 20 }) {
   //   "translate(25, 20) scale(0.75) translate(-1415, -620)"
   // applies in this sequence: 1) move to origin, 2) scale down, 3) position in viewBox
   // Result: icon positioned at (25, 20) to (72.25, 67.25) within the 100x100 viewBox
-  const ICON_TRANSLATE_X = 25;
-  const ICON_TRANSLATE_Y = 20;
+  const ICON_TRANSLATE_X = 0;
+  const ICON_TRANSLATE_Y = 0;
   const ICON_SCALE = 0.75;
 
   return (
