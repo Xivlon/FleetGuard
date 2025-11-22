@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
 } from 'react-native';
 import MapView, { Marker, UrlTile, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useWebSocket } from '../contexts/WebSocketContext';
@@ -21,8 +20,6 @@ const COLORS = {
   medium: '#F59E0B',
   low: '#10B981',
 };
-
-const { width, height } = Dimensions.get('window');
 
 export default function FleetDashboard({ navigation }) {
   const { vehicles, hazards, connected, backendUrl } = useWebSocket();
