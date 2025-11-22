@@ -23,10 +23,13 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
 
   // Icon positioning and scale within the normalized viewBox
   // The new SVG is already centered and properly sized at 24x24
-  // We center it in our viewBox for proper rendering
-  const ICON_TRANSLATE_X = 75; // Center position in 150x150 viewBox
-  const ICON_TRANSLATE_Y = 75; // Center position in 150x150 viewBox
-  const ICON_SCALE = 2.5; // Scale up from 24x24 to fit our marker size
+  // We use a 150x150 viewBox and center the icon within it
+  const VIEWBOX_SIZE = 150;
+  const ICON_TRANSLATE_X = VIEWBOX_SIZE / 2; // Center position in viewBox
+  const ICON_TRANSLATE_Y = VIEWBOX_SIZE / 2; // Center position in viewBox
+  // Scale factor: We want the icon to be approximately 60px in the 150x150 viewBox
+  // 60 / 24 (original SVG size) = 2.5 (target size / original size)
+  const ICON_SCALE = 2.5;
 
   return (
     <View style={[styles.container, { width: glowSize, height: glowSize }]}>
@@ -53,14 +56,14 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
         <Svg
           width={size}
           height={size}
-          viewBox="0 0 150 150"
+          viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
           style={styles.svg}
         >
 
           {/* Outer circle border with visible fill */}
           <Circle
-            cx="75"
-            cy="75"
+            cx={VIEWBOX_SIZE / 2}
+            cy={VIEWBOX_SIZE / 2}
             r="48"
             stroke={color}
             strokeWidth={borderWidth * 1.5}
