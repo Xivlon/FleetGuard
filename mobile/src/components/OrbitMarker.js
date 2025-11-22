@@ -58,18 +58,11 @@ export default function OrbitMarker({ color = '#10B981', size = 20 }) {
           viewBox="0 0 100 100"
           style={styles.svg}
         >
-          {/* White background circle */}
-          <Circle
-            cx="0"
-            cy="0"
-            r="48"
-            fill="white"
-          />
 
           {/* Outer circle border with visible fill */}
           <Circle
-            cx="50"
-            cy="50"
+            cx="30"
+            cy="30"
             r="48"
             stroke={color}
             strokeWidth={borderWidth * 1.5}
