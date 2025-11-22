@@ -2,48 +2,40 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-/**
- * OrbitMarker component
- * Displays a custom marker on the map to indicate user location
- *
- * - Orbit icon centered in the SVG
- * - Outer ring centered on the orbit
- * - Glow centered on both, not clipped
- */
 export default function OrbitMarker({
   color = '#10B981',
   size = 40,
 }) {
-  // How much bigger the glow is than the SVG icon (in pixels)
-  const glowPadding = 16;              // tweak this to grow/shrink the glow
-  const glowSize = size + glowPadding; // outer RN container & glow circle size
+  // Slightly larger glow container than the SVG icon
+  const glowPadding = 16;              // you can tweak this
+  const glowSize = size + glowPadding; // outer container and glow size
 
   // Simple SVG coordinate system
   const VIEWBOX_SIZE = 100;
-  const CENTER = VIEWBOX_SIZE / 2; // 50,50 is the center
+  const CENTER = VIEWBOX_SIZE / 2; // 50,50
 
-  // Original Lucide orbit SVG is centered around (12, 12) in a 24x24 box
+  // Original Lucide orbit icon center (24x24 icon)
   const ORIGINAL_VIEWBOX_X = 12;
   const ORIGINAL_VIEWBOX_Y = 12;
 
   // How large the orbit icon appears inside the 100x100 viewBox
-  const ICON_SCALE = 3.0; // increase/decrease to change icon size relative to ring
+  const ICON_SCALE = 3.0;
 
-  // Ring radius in viewBox units; chosen to sit just inside the glow
-  const RING_RADIUS = VIEWBOX_SIZE * 0.34; // 34 in a 100x100 viewBox
-  const RING_STROKE_WIDTH = 4; // in viewBox units; tweak by eye
+  // Ring radius in viewBox units
+  const RING_RADIUS = VIEWBOX_SIZE * 0.34; // tweak if needed
+  const RING_STROKE_WIDTH = 4;
 
   return (
     <View style={[styles.container, { width: glowSize, height: glowSize }]}>
-      {/* Glow: centered, no transforms, large enough not to clip */}
+      {/* Glow: full-size circle, centered, no transforms */}
       <View
         style={[
-          styles.glowEffect,
+          styles.glow,
           {
             width: glowSize,
             height: glowSize,
             borderRadius: glowSize / 2,
-            backgroundColor: `${color}40`, // 25% opacity
+            backgroundColor: `${color}40`,
           },
         ]}
       />
@@ -51,7 +43,7 @@ export default function OrbitMarker({
       {/* Centered SVG icon + ring */}
       <View
         style={[
-          styles.innerContainer,
+          styles.iconContainer,
           {
             width: size,
             height: size,
@@ -62,9 +54,8 @@ export default function OrbitMarker({
           width={size}
           height={size}
           viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
-          style={styles.svg}
         >
-          {/* Outer ring, centered on the orbit */}
+          {/* Outer ring, centered on orbit */}
           <Circle
             cx={CENTER}
             cy={CENTER}
@@ -125,24 +116,19 @@ export default function OrbitMarker({
 }
 
 const styles = StyleSheet.create({
+  // This is what react-native-maps (or your parent) sees as "the marker view"
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'visible', // allows glow to extend past bounds
+    overflow: 'visible', // allow glow to extend
   },
-  glowEffect: {
+  // Full-size glow, sitting directly under iconContainer
+  glow: {
     position: 'absolute',
   },
-  innerContainer: {
+  // Holds the SVG, centered inside container
+  iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  svg: {
-    backgroundColor: 'transparent',
   },
 });
