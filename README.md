@@ -82,11 +82,11 @@ The mobile app is built with Expo and React Native, featuring:
 ### Installing Dependencies
 
 ```bash
-# Install all dependencies (root, backend, and mobile)
+# Install all dependencies for the entire project (root, backend, and mobile)
 npm install
-cd backend && npm install
-cd ../mobile && npm install
 ```
+
+This project uses npm workspaces, so a single `npm install` at the root installs dependencies for all packages.
 
 ### Development Scripts
 

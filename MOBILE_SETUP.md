@@ -21,14 +21,14 @@ Download this entire Replit project to your local computer:
 
 ### Step 2: Install Dependencies
 
-Open terminal/command prompt and navigate to the mobile folder:
+Open terminal/command prompt and navigate to the project root:
 
 ```bash
-cd path/to/your/project/mobile
+cd path/to/your/project
 npm install
 ```
 
-This will install all required dependencies (may take 5-10 minutes).
+This will install all required dependencies for the entire project including the mobile app (may take 5-10 minutes). The project uses npm workspaces to manage dependencies.
 
 ### Step 3: Update Backend URL
 
@@ -46,7 +46,10 @@ const BACKEND_URL = 'https://a80eda13-a54e-4a07-85d4-bde9f84e0168-00-1okal3s3r72
 
 ### Step 4: Start the App
 
+Navigate to the mobile directory and start:
+
 ```bash
+cd mobile
 npm start
 ```
 

@@ -6,10 +6,13 @@
 - **iOS**: Download from [App Store](https://apps.apple.com/app/expo-go/id982107779)
 - **Android**: Download from [Google Play](https://play.google.com/store/apps/details?id=host.exp.exponent)
 
-### Step 2: Start the Development Server
+### Step 2: Install Dependencies and Start
 ```bash
+# From the project root, install all dependencies (first time only)
+npm install
+
+# Navigate to mobile directory and start
 cd mobile
-npm install  # First time only
 npm start
 ```
 
