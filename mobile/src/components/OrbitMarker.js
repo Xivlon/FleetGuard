@@ -29,7 +29,7 @@ export default function OrbitMarker({
   borderOffsetUnitsY = 0,
   // New: padding in viewBox units to expand the viewBox equally on all sides.
   // Default 0 (no expansion). Increase to add whitespace while preserving pixel positions/sizes.
-  viewBoxPadding = 0,
+  viewBoxPadding = 10,
 }) {
   console.log(
     '[OrbitMarker] color:',
