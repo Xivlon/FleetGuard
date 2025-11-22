@@ -713,14 +713,29 @@ export default function NavigationScreen({ navigation }) {
             }}
           />
 
-          {/* User Location Marker - Rendered LAST to appear on top of all other overlays */}
-          {userLocation && (
-            <Marker
-              coordinate={userLocation}
-              anchor={{ x: 0.5, y: 0.5 }}  // center of size x size box
-            >
-              <UserLocationMarkerSvg color={COLORS.userLocation} size={50} spin={true} />
-            </Marker>
+        // --- inside NavigationScreen component, compute locking/locked (place near other derived state) ---
+          // isLockingOntoLocation: true while we're trying to get a fix (searching)
+          const isLockingOntoLocation = (
+            permissionStatus === 'checking' ||
+            (permissionStatus === 'granted' && !currentLocation) ||
+            (currentLocation && currentLocation.accuracy && currentLocation.accuracy > 100) // tune threshold
+          );
+        
+          // isLocked: stable/healthy fix (we'll spin when locked)
+          const isLocked = !isLockingOntoLocation && currentLocation != null && (currentLocation.accuracy === undefined || currentLocation.accuracy <= 100);
+        
+        // --- replace your previous user-location Marker with this ---
+        {userLocation && (
+          <Marker coordinate={userLocation} anchor={{ x: 0.5, y: 0.5 }}>
+            <UserLocationMarkerSvg
+              color={COLORS.userLocation}
+              size={50}
+              spin={isLocked}           // spin only when we have a stable lock
+              spinDuration={6000}       // slower rotation
+              pulse={isLockingOntoLocation} // pulse only while searching
+              pulseDuration={900}
+            />
+          </Marker>
           )}
         </MapView>
       </View>
