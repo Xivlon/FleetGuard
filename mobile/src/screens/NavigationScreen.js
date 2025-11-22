@@ -20,7 +20,6 @@ import ObstacleMarkers from '../components/ObstacleMarkers';
 import WaypointMarker from '../components/WaypointMarker';
 import MinecraftClock from '../components/MinecraftClock';
 import WaypointModal from '../components/WaypointModal';
-import OrbitMarker from '../components/OrbitMarker';
 import SimpleLocationMarker from '../components/SimpleLocationMarker';
 
 const COLORS = {
@@ -69,7 +68,6 @@ export default function NavigationScreen({ navigation }) {
   const [vehicleId] = useState('demo-vehicle');
   const [followMe, setFollowMe] = useState(true);
   const [userLocation, setUserLocation] = useState(null);
-  const [locationSubscription, setLocationSubscription] = useState(null);
   const [isRerouting, setIsRerouting] = useState(false);
   const [waypointModalVisible, setWaypointModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -175,7 +173,6 @@ export default function NavigationScreen({ navigation }) {
           }
         });
 
-        setLocationSubscription(subscription);
         console.log('[NavigationScreen] Location tracking started successfully');
       } catch (error) {
         console.error('[NavigationScreen] Failed to start location tracking:', error);
@@ -218,7 +215,6 @@ export default function NavigationScreen({ navigation }) {
         // Get destination from route
         const destination = route.coordinates?.[route.coordinates.length - 1];
         if (destination) {
-          const normalizedDest = normalizeCoord(destination);
           await calculateRoute();
         }
       } else if (hasSevereTraffic) {
