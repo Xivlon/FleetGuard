@@ -56,20 +56,20 @@ export default function OrbitMarker({
             fill="none"
           />
 
-          {/* Orbit arcs - drawn relative to center */}
+          {/* Orbit arcs - original Lucide paths with transforms applied */}
           <Path
-            d="M 32.1 29.7 A 15 15 0 0 1 34.6 57.8"
+            d="M 75.023 33.452 A 30 30 0 0 1 44.798 79.55"
             fill="none"
             stroke={color}
-            strokeWidth="3"
+            strokeWidth="6"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
           <Path
-            d="M 67.9 70.3 A 15 15 0 0 1 65.4 42.2"
+            d="M 24.977 66.548 A 30 30 0 0 1 55.22 20.456"
             fill="none"
             stroke={color}
-            strokeWidth="3"
+            strokeWidth="6"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -78,21 +78,21 @@ export default function OrbitMarker({
           <Circle
             cx={CENTER}
             cy={CENTER}
-            r="4.5"
+            r="9"
             fill={color}
           />
 
           {/* Satellites */}
           <Circle
-            cx="60.5"
-            cy="39.5"
-            r="3"
+            cx="71"
+            cy="29"
+            r="6"
             fill={color}
           />
           <Circle
-            cx="39.5"
-            cy="60.5"
-            r="3"
+            cx="29"
+            cy="71"
+            r="6"
             fill={color}
           />
         </Svg>
