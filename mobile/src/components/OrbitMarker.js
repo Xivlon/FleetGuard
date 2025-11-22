@@ -60,8 +60,8 @@ export default function OrbitMarker({ color = '#10B981', size = 20 }) {
         >
           {/* White background circle */}
           <Circle
-            cx="50"
-            cy="50"
+            cx="0"
+            cy="0"
             r="48"
             fill="white"
           />
