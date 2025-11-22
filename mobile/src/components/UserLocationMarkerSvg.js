@@ -1,28 +1,38 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { G, Circle, Path } from 'react-native-svg';
+
+// Create animated versions of SVG elements
+const AnimatedG = Animated.createAnimatedComponent(G);
 
 /**
  * UserLocationMarkerSvg
  *
- * - Measures its actual rendered size and computes pivot from that so rotation
- *   happens around the artwork's visual center (no more orbiting).
- * - Supports spin (rotate) and pulse (scale) with clean startup/teardown.
+ * - Rotates & pulses inside the SVG using an animated <G> so rotation pivot is exact.
+ * - spin/pulse animations now run without pixel-pivot math; no more "orbiting" effect.
+ *
+ * Props:
+ * - color: string (hex)
+ * - size: number (px)
+ * - spin: boolean -> rotate continuously when true
+ * - spinDuration: number ms for one full rotation
+ * - pulse: boolean -> pulse (scale) loop when true
+ * - pulseDuration: number ms for one pulse cycle
  */
 export default function UserLocationMarkerSvg({
   color = '#10B981',
-  size = 40,            // nominal size (used for initial layout/fallback)
+  size = 40,
   spin = false,
   spinDuration = 6000,
   pulse = false,
   pulseDuration = 900,
 }) {
-  const spinAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(0)).current;
+  // Animated values (we can't use useNativeDriver for animating svg props)
+  const spinAnim = useRef(new Animated.Value(0)).current;   // 0..1 -> 0..360deg
+  const pulseAnim = useRef(new Animated.Value(0)).current;  // 0..1 -> scale
+
   const spinRef = useRef(null);
   const pulseRef = useRef(null);
-
-  const [layout, setLayout] = useState(null); // { width, height }
 
   useEffect(() => {
     if (spin) {
@@ -32,7 +42,7 @@ export default function UserLocationMarkerSvg({
           toValue: 1,
           duration: spinDuration,
           easing: Easing.linear,
-          useNativeDriver: true,
+          useNativeDriver: false, // animating svg props; native driver doesn't support them
         }),
         { iterations: -1 }
       );
@@ -42,7 +52,7 @@ export default function UserLocationMarkerSvg({
         spinRef.current.stop();
         spinRef.current = null;
       }
-      // smooth stop if you prefer: Animated.timing(spinAnim, { toValue: 0, duration: 250, useNativeDriver: true }).start();
+      // Reset to 0 (instant) or animate to 0 for a smooth stop
       spinAnim.setValue(0);
     }
 
@@ -63,13 +73,13 @@ export default function UserLocationMarkerSvg({
             toValue: 1,
             duration: pulseDuration / 2,
             easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
           Animated.timing(pulseAnim, {
             toValue: 0,
             duration: pulseDuration / 2,
             easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         ]),
         { iterations: -1 }
@@ -91,9 +101,10 @@ export default function UserLocationMarkerSvg({
     };
   }, [pulse, pulseDuration, pulseAnim]);
 
-  const rotate = spinAnim.interpolate({
+  // Interpolations for SVG props
+  const rotation = spinAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
+    outputRange: [0, 360], // numeric degrees for SVG rotation prop
   });
 
   const scale = pulseAnim.interpolate({
@@ -101,71 +112,43 @@ export default function UserLocationMarkerSvg({
     outputRange: [1, 1.08],
   });
 
-  // SVG layout constants (conservative so nothing clips)
+  // SVG layout constants — keep conservative to avoid clipping
   const VIEWBOX_SIZE = 100;
-  const CENTER = VIEWBOX_SIZE / 3; // visual center inside viewBox
+  const CENTER = VIEWBOX_SIZE / 3; // tuned to avoid earlier clipping
   const MARGIN = 8;
   const MAX_RADIUS = CENTER - MARGIN;
+  const ICON_SCALE = 2.8;
   const ORIGINAL_VIEWBOX_X = 12;
   const ORIGINAL_VIEWBOX_Y = 12;
-  const ICON_SCALE = 2.8;
   const GLOW_RADIUS = MAX_RADIUS;
   const RING_RADIUS = MAX_RADIUS * 0.75;
   const RING_STROKE_WIDTH = 3;
 
-  // compute pivot from actual measured layout (fallback to prop `size` if not measured yet)
-  const measuredWidth = layout?.width ?? size;
-  const measuredHeight = layout?.height ?? size;
-
-  const pivotX = useMemo(() => (CENTER / VIEWBOX_SIZE) * measuredWidth, [CENTER, VIEWBOX_SIZE, measuredWidth]);
-  const pivotY = useMemo(() => (CENTER / VIEWBOX_SIZE) * measuredHeight, [CENTER, VIEWBOX_SIZE, measuredHeight]);
-
-  const translateToCenterX = useMemo(() => measuredWidth / 2 - pivotX, [measuredWidth, pivotX]);
-  const translateToCenterY = useMemo(() => measuredHeight / 2 - pivotY, [measuredHeight, pivotY]);
-
-  // Animated transform sequence: move pivot -> rotate -> scale -> move back
-  const animatedTransforms = [
-    { translateX: translateToCenterX },
-    { translateY: translateToCenterY },
-    { rotate },
-    { scale },
-    { translateX: -translateToCenterX },
-    { translateY: -translateToCenterY },
-  ];
-
+  // Animated props for <G>:
+  // - rotation (degrees) around (CENTER, CENTER)
+  // - scale around the same origin
+  // AnimatedG accepts numeric rotation and scale props.
   return (
-    <Animated.View
-      onLayout={(e) => {
-        const { width, height } = e.nativeEvent.layout;
-        // store if changed to trigger re-compute of pivot
-        if (!layout || layout.width !== width || layout.height !== height) {
-          setLayout({ width, height });
-        }
-      }}
-      style={{
-        width: size,
-        height: size,
-        alignItems: 'center',
-        justifyContent: 'center',
-        transform: animatedTransforms,
-        // use pointerEvents="box-none" if you want map taps to pass through
-      }}
-    >
-      <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-        <Svg width={measuredWidth} height={measuredHeight} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
-          {/* Glow */}
-          <Circle cx={CENTER} cy={CENTER} r={GLOW_RADIUS} fill={`${color}33`} />
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
+        {/* Outer glow + ring are drawn as usual */}
+        <Circle cx={CENTER} cy={CENTER} r={GLOW_RADIUS} fill={`${color}33`} />
+        <Circle
+          cx={CENTER}
+          cy={CENTER}
+          r={RING_RADIUS}
+          stroke={color}
+          strokeWidth={RING_STROKE_WIDTH}
+          fill="none"
+        />
 
-          {/* Outer ring */}
-          <Circle
-            cx={CENTER}
-            cy={CENTER}
-            r={RING_RADIUS}
-            stroke={color}
-            strokeWidth={RING_STROKE_WIDTH}
-            fill="none"
-          />
-
+        {/* Animated group: rotate & scale around the artwork center */}
+        <AnimatedG
+          rotation={rotation}
+          originX={CENTER}
+          originY={CENTER}
+          scale={scale}
+        >
           {/* Orbit arcs */}
           <Path
             d="M20.341 6.484A10 10 0 0 1 10.266 21.85"
@@ -186,7 +169,7 @@ export default function UserLocationMarkerSvg({
             transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
 
-          {/* Center circle */}
+          {/* Center circle and satellites */}
           <Circle
             cx="12"
             cy="12"
@@ -194,8 +177,6 @@ export default function UserLocationMarkerSvg({
             fill={color}
             transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
-
-          {/* Satellites */}
           <Circle
             cx="19"
             cy="5"
@@ -210,8 +191,8 @@ export default function UserLocationMarkerSvg({
             fill={color}
             transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
-        </Svg>
-      </View>
-    </Animated.View>
+        </AnimatedG>
+      </Svg>
+    </View>
   );
 }
