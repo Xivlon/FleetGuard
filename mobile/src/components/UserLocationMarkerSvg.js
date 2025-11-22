@@ -103,8 +103,8 @@ export default function UserLocationMarkerSvg({
   });
 
   // SVG layout constants (conservative to avoid clipping)
-  const VIEWBOX_SIZE = 200;
-  const CENTER = VIEWBOX_SIZE / 4; // tuned earlier to avoid clipping
+  const VIEWBOX_SIZE = 50;
+  const CENTER = VIEWBOX_SIZE / 3; // tuned earlier to avoid clipping
   const MARGIN = 8;
   const MAX_RADIUS = CENTER - MARGIN;
   const ORIGINAL_VIEWBOX_X = 12;
