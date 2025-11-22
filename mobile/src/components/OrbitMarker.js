@@ -17,7 +17,7 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
   const glowSize = size + 8;
 
   // Original viewBox coordinates from orbit.svg (Lucide orbit icon)
-  // The orbit icon is centered at (12, 12) in the 24x24 SVG viewBox
+  // The orbit icon is centered at (30, 30) in the 24x24 SVG viewBox
   const ORIGINAL_VIEWBOX_X = 30;
   const ORIGINAL_VIEWBOX_Y = 30;
 
@@ -64,8 +64,8 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
 
           {/* Outer circle border with visible fill */}
           <Circle
-            cx={VIEWBOX_SIZE / 2}
-            cy={VIEWBOX_SIZE / 2}
+            cx=30
+            cy=30
             r={BORDER_RADIUS}
             stroke={color}
             strokeWidth={borderWidth * 1.5}
