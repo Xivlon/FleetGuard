@@ -799,29 +799,6 @@ export default function NavigationScreen({ navigation }) {
     </View>
   );
 }
-          </ScrollView>
-          
-          {currentStep < route.instructions.length - 1 && (
-            <TouchableOpacity
-              style={styles.nextButton}
-              onPress={() => setCurrentStep(currentStep + 1)}
-            >
-              <Text style={styles.nextButtonText}>Next Step</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {/* Waypoint Creation Modal */}
-      <WaypointModal
-        visible={waypointModalVisible}
-        location={selectedLocation}
-        onClose={() => setWaypointModalVisible(false)}
-        onSubmit={handleWaypointSubmit}
-      />
-    </View>
-  );
-}
 
 const darkMapStyle = [
   { elementType: 'geometry', stylers: [{ color: '#212121' }] },
