@@ -9,6 +9,9 @@ import Svg, { Circle, Path } from 'react-native-svg';
  * NOTE: This variant supports nudging the RN glow view and the SVG outer ring
  * using either device pixels OR viewBox units (so you can tweak using the same
  * coordinate system as the SVG: ORIGINAL_VIEWBOX_X / ORIGINAL_VIEWBOX_Y).
+ *
+ * New: added `viewBoxPadding` prop to expand the SVG viewBox evenly on all sides
+ * while keeping component pixel positions/sizes unchanged.
  */
 export default function OrbitMarker({
   color = '#10B981',
@@ -24,7 +27,9 @@ export default function OrbitMarker({
   glowOffsetUnitsY = 0,
   borderOffsetUnitsX = 0,
   borderOffsetUnitsY = 0,
-  viewBoxPadding = 1,
+  // New: padding in viewBox units to expand the viewBox equally on all sides.
+  // Default 0 (no expansion). Increase to add whitespace while preserving pixel positions/sizes.
+  viewBoxPadding = 0,
 }) {
   console.log(
     '[OrbitMarker] color:',
@@ -46,31 +51,27 @@ export default function OrbitMarker({
     'borderOffsetUnitsX:',
     borderOffsetUnitsX,
     'borderOffsetUnitsY:',
-    borderOffsetUnitsY
+    borderOffsetUnitsY,
+    'viewBoxPadding:',
+    viewBoxPadding
   );
 
-  // Calculate border width for glow effect
+  // Calculate border width for glow effect (px)
   const borderWidth = Math.max(2, size * 0.05);
   const glowSize = size + 0;
 
   // Original viewBox coordinates from orbit.svg (Lucide orbit icon)
-  // Using 27 as the reference point for positioning (intentionally set for proper alignment)
+  // Using 25 as the reference point for positioning (intentionally set for proper alignment)
   const ORIGINAL_VIEWBOX_X = 25;
   const ORIGINAL_VIEWBOX_Y = 25;
 
-  // Icon positioning and scale within the normalized viewBox
+  // Base viewBox configuration
   const VIEWBOX_SIZE = 100;
-  const ICON_TRANSLATE_X = VIEWBOX_SIZE / 1.5; // where the orbit is placed in viewBox units
-  const ICON_TRANSLATE_Y = VIEWBOX_SIZE / 1.5;
-  const ICON_SCALE = 2.5;
-  const BORDER_RADIUS = VIEWBOX_SIZE * 0.32; // 32 in a 100 viewBox
-
-  // Map viewBox units -> pixels for the current rendered size
-  const unitToPixel = size / VIEWBOX_SIZE;
-  const viewCenter = VIEWBOX_SIZE / 2;
 
   // Expand the viewBox evenly on all sides by `viewBoxPadding` units
   const newViewboxSize = VIEWBOX_SIZE + 2 * (viewBoxPadding || 0);
+  // viewCenter defined relative to original VIEWBOX_SIZE (used for ICON_TRANSLATE offset)
+  const viewCenter = VIEWBOX_SIZE / 2;
   // minX/minY so expansion is centered around the original center
   const minX = viewCenter - newViewboxSize / 2;
   const minY = viewCenter - newViewboxSize / 2;
@@ -79,17 +80,43 @@ export default function OrbitMarker({
   // pixels-per-unit changes and we must account for that:
   const unitToPixel = newViewboxSize > 0 ? size / newViewboxSize : size / VIEWBOX_SIZE;
   const scaleAdjust = newViewboxSize / VIEWBOX_SIZE; // how many times larger the viewBox got
-  // Combine base offset with user-supplied unit nudges for the glow (in viewBox units)
+
+  // Icon positioning inside the viewBox (these remain the same logical coordinates)
+  const ICON_TRANSLATE_X = VIEWBOX_SIZE / 1.5;
+  const ICON_TRANSLATE_Y = VIEWBOX_SIZE / 1.5;
+  // Adjust the icon scale so visual pixel size stays the same after viewBox expansion
+  const ICON_SCALE = 2.5;
+  const adjustedIconScale = ICON_SCALE * scaleAdjust;
+
+  // Border radius expressed in viewBox units originally; adjust so its on-screen pixel size is preserved
+  const BORDER_RADIUS = VIEWBOX_SIZE * 0.32; // original units
+  const adjustedBorderRadius = BORDER_RADIUS * scaleAdjust;
+
+  // Stroke widths:
+  // - desiredPixelStrokeForRing is borderWidth * 1.5 (px)
+  // - to keep that same pixel thickness after changing the viewBox, convert to viewBox units using unitToPixel
+  const desiredPixelStrokeForRing = borderWidth * 1.5;
+  const ringStrokeWidthUnits = unitToPixel > 0 ? desiredPixelStrokeForRing / unitToPixel : desiredPixelStrokeForRing;
+
+  // Path stroke originally used "2" (viewBox units). Preserve its pixel thickness:
+  const originalPathStrokeUnits = 2; // original viewBox units used in paths
+  const adjustedPathStrokeUnits = originalPathStrokeUnits * scaleAdjust;
+
+  // Compute offsets to align RN glow view with the icon center in pixel space using the new viewBox size
+  const baseOffsetUnitsX = ICON_TRANSLATE_X - viewCenter;
+  const baseOffsetUnitsY = ICON_TRANSLATE_Y - viewCenter;
+
+  // Combine base offset with any unit-based tweaks for the glow
   const totalGlowOffsetUnitsX = baseOffsetUnitsX + (glowOffsetUnitsX || 0);
   const totalGlowOffsetUnitsY = baseOffsetUnitsY + (glowOffsetUnitsY || 0);
 
-  // Convert the total unit offset to pixels, then add any pixel-based tweak the user passed
+  // Convert total unit offsets to pixels, then add pixel-based tweaks
   const glowTranslateX = totalGlowOffsetUnitsX * unitToPixel + (glowOffsetX || 0);
   const glowTranslateY = totalGlowOffsetUnitsY * unitToPixel + (glowOffsetY || 0);
 
-  // Convert pixel border offsets into viewBox units (so we can add them to cx/cy)
-  const borderOffsetUnitsFromPxX = (borderOffsetX || 0) / (unitToPixel || 1);
-  const borderOffsetUnitsFromPxY = (borderOffsetY || 0) / (unitToPixel || 1);
+  // Convert pixel border offsets into viewBox units (using the new unitToPixel)
+  const borderOffsetUnitsFromPxX = unitToPixel > 0 ? (borderOffsetX || 0) / unitToPixel : 0;
+  const borderOffsetUnitsFromPxY = unitToPixel > 0 ? (borderOffsetY || 0) / unitToPixel : 0;
 
   // Final ring center in viewBox units: ICON_TRANSLATE + user unit offsets + converted pixel offsets
   const ringCx = ICON_TRANSLATE_X + (borderOffsetUnitsX || 0) + borderOffsetUnitsFromPxX;
@@ -125,22 +152,35 @@ export default function OrbitMarker({
         ]}
       >
         {/* Inner SVG icon with both circle border and orbit symbol */}
-        <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`} style={styles.svg}>
+        <Svg
+          width={size}
+          height={size}
+          // new viewBox expanded evenly around the original center
+          viewBox={`${minX} ${minY} ${newViewboxSize} ${newViewboxSize}`}
+          style={styles.svg}
+        >
           {/* Outer circle border: centered at the same point where the orbit SVG is positioned
-              and additionally adjusted by borderOffsetUnitsX/Y (viewBox units) or borderOffsetX/Y (px) */}
-          <Circle cx={ringCx} cy={ringCy} r={BORDER_RADIUS} stroke={color} strokeWidth={borderWidth * 1.5} fill="none" />
+              and adjusted so its on-screen pixel radius/stroke remain the same after viewBox expansion */}
+          <Circle
+            cx={ringCx}
+            cy={ringCy}
+            r={adjustedBorderRadius}
+            stroke={color}
+            strokeWidth={ringStrokeWidthUnits}
+            fill="none"
+          />
 
-          {/* Inner orbit icon - scaled and centered (unchanged) */}
+          {/* Inner orbit icon - scaled and centered (use adjustedIconScale so pixel size stays same) */}
           <Path
             d="M20.341 6.484A10 10 0 0 1 10.266 21.85"
             fill="none"
             stroke={color}
-            strokeWidth="2"
+            strokeWidth={adjustedPathStrokeUnits}
             strokeLinecap="round"
             strokeLinejoin="round"
-            transform={`translate(${ICON_TRANSLATE_X}, ${ICON_TRANSLATE_Y}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            transform={`translate(${ICON_TRANSLATE_X}, ${ICON_TRANSLATE_Y}) scale(${adjustedIconScale}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
-        <Path
+          <Path
             d="M3.659 17.516A10 10 0 0 1 13.74 2.152"
             fill="none"
             stroke={color}
@@ -148,9 +188,9 @@ export default function OrbitMarker({
             strokeLinecap="round"
             strokeLinejoin="round"
             transform={`translate(${ICON_TRANSLATE_X}, ${ICON_TRANSLATE_Y}) scale(${adjustedIconScale}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
-         />
-        {/* Center circle */}
-        <Circle
+          />
+          {/* Center circle */}
+          <Circle
             cx="12"
             cy="12"
             r="3"
@@ -163,14 +203,14 @@ export default function OrbitMarker({
             cy="5"
             r="2"
             fill={color}
-            transform={`translate(${ICON_TRANSLATE_X}, ${ICON_TRANSLATE_Y}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            transform={`translate(${ICON_TRANSLATE_X}, ${ICON_TRANSLATE_Y}) scale(${adjustedIconScale}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
           <Circle
             cx="5"
             cy="19"
             r="2"
             fill={color}
-            transform={`translate(${ICON_TRANSLATE_X}, ${ICON_TRANSLATE_Y}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            transform={`translate(${ICON_TRANSLATE_X}, ${ICON_TRANSLATE_Y}) scale(${adjustedIconScale}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
         </Svg>
       </View>
