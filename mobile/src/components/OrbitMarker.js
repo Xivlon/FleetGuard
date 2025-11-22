@@ -17,43 +17,58 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
   const glowSize = size + 8;
 
   // Original viewBox coordinates from orbit.svg (Lucide orbit icon)
-  // The orbit icon is centered at (30, 30) in the 24x24 SVG viewBox
+  // The orbit icon is centered at (approx) (27, 27) in the original SVG coordinate space
   const ORIGINAL_VIEWBOX_X = 27;
   const ORIGINAL_VIEWBOX_Y = 27;
 
   // Icon positioning and scale within the normalized viewBox
-  // The new SVG is already centered and properly sized at 24x24
-  // We use a 150x150 viewBox and center the icon within it
   const VIEWBOX_SIZE = 100;
-  const ICON_TRANSLATE_X = VIEWBOX_SIZE / 1.5; // Center position in viewBox
-  const ICON_TRANSLATE_Y = VIEWBOX_SIZE / 1.5; // Center position in viewBox
-  // Scale factor: We want the icon to be approximately 60px in the 150x150 viewBox
-  // 60 / 24 (original SVG size) = 2.5 (target size / original size)
+  const ICON_TRANSLATE_X = VIEWBOX_SIZE / 1.5; // center position in viewBox where the orbit is placed
+  const ICON_TRANSLATE_Y = VIEWBOX_SIZE / 1.5; // center position in viewBox where the orbit is placed
   const ICON_SCALE = 2.5;
-  // Border circle radius: approximately 64% of the viewBox radius for good visual balance
   const BORDER_RADIUS = VIEWBOX_SIZE * 0.32; // 32 in a 100 viewBox
+
+  // Compute the pixel offset between the viewBox center and the orbit's translated center.
+  // We'll apply this offset to non-SVG RN views (glow) so their center aligns with the orbit svg center.
+  const viewCenter = VIEWBOX_SIZE / 2;
+  const offsetUnitsX = ICON_TRANSLATE_X - viewCenter;
+  const offsetUnitsY = ICON_TRANSLATE_Y - viewCenter;
+  // SVG units -> pixels scaling for the current rendered size
+  const unitToPixel = size / VIEWBOX_SIZE;
+  const offsetPxX = offsetUnitsX * unitToPixel;
+  const offsetPxY = offsetUnitsY * unitToPixel;
 
   return (
     <View style={[styles.container, { width: glowSize, height: glowSize }]}>
-      {/* Outer glow effect for better visibility */}
-      <View style={[
-        styles.glowEffect,
-        {
-          width: glowSize,
-          height: glowSize,
-          borderRadius: glowSize / 2,
-          backgroundColor: `${color}40`, // 25% opacity
-        }
-      ]} />
+      {/* Outer glow effect for better visibility.
+          This view is translated by offsetPx so its center aligns with the orbit SVG center. */}
+      <View
+        style={[
+          styles.glowEffect,
+          {
+            width: glowSize,
+            height: glowSize,
+            borderRadius: glowSize / 2,
+            backgroundColor: `${color}40`, // 25% opacity
+            // translate the glow so its center maps to the same pixel position as ICON_TRANSLATE_X/Y
+            transform: [{ translateX: offsetPxX }, { translateY: offsetPxY }],
+          },
+        ]}
+      />
 
       {/* Inner container for SVG with proper centering */}
-      <View style={[
-        styles.innerContainer,
-        {
-          width: size,
-          height: size,
-        }
-      ]}>
+      <View
+        style={[
+          styles.innerContainer,
+          {
+            width: size,
+            height: size,
+            // NOTE: we intentionally do NOT translate the innerContainer because the orbit SVG
+            // itself is positioned inside the viewBox using its transform (ICON_TRANSLATE_*).
+            // Moving innerContainer would move the orbit artwork as well.
+          },
+        ]}
+      >
         {/* Inner SVG icon with both circle border and orbit symbol */}
         <Svg
           width={size}
@@ -61,19 +76,17 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
           viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
           style={styles.svg}
         >
-
-          {/* Outer circle border: centered in the viewBox now */}
+          {/* Outer circle border: centered at the same point where the orbit SVG is positioned */}
           <Circle
-            cx={VIEWBOX_SIZE / 2}
-            cy={VIEWBOX_SIZE / 2}
+            cx={ICON_TRANSLATE_X}
+            cy={ICON_TRANSLATE_Y}
             r={BORDER_RADIUS}
             stroke={color}
             strokeWidth={borderWidth * 1.5}
             fill="none"
           />
 
-          {/* Inner orbit icon - scaled and centered */}
-          {/* Orbit arcs */}
+          {/* Inner orbit icon - scaled and centered (unchanged) */}
           <Path
             d="M20.341 6.484A10 10 0 0 1 10.266 21.85"
             fill="none"
