@@ -98,8 +98,8 @@ export default function UserLocationMarkerSvg({
   });
 
   const scale = pulseAnim.interpolate({
-    inputRange: [0, 0],
-    outputRange: [1, 1],
+    inputRange: [0, 1],
+    outputRange: [1, 1.08],
   });
 
   // SVG layout constants (conservative to avoid clipping)
