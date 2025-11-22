@@ -781,6 +781,7 @@ export default function NavigationScreen({ navigation }) {
             <UserLocationMarkerSvg color={COLORS.userLocation} size={50} />
           </Marker>
         )}
+
         {/* Minecraft-style Clock */}
         <MinecraftClock />
 
@@ -804,7 +805,6 @@ export default function NavigationScreen({ navigation }) {
             <Text style={styles.exitFullscreenButtonText}>Exit Fullscreen</Text>
           </TouchableOpacity>
         )}
-      </View>
 
       {route && route.instructions && route.instructions.length > 0 && !isFullScreen && (
         <View style={styles.instructionsContainer}>
