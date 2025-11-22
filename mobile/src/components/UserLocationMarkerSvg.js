@@ -6,29 +6,28 @@ import Svg, { Circle, Path } from 'react-native-svg';
  * UserLocationMarkerSvg
  *
  * Props:
- * - color: hex color for ring/icon
- * - size: pixel size of the marker square
- * - spin: boolean, whether to spin the marker
- * - spinDuration: ms for one full rotation (default 3000)
- *
- * Implementation:
- * - Wraps the SVG in an Animated.View and rotates using native driver.
- * - Looping animation is started on mount and cleaned up on unmount.
+ * - color: string (hex)
+ * - size: number (px)
+ * - spin: boolean -> rotate continuously when true
+ * - spinDuration: number ms for one full rotation (default slowed to 6000)
+ * - pulse: boolean -> pulse (scale) loop when true
+ * - pulseDuration: number ms for one pulse cycle
  */
 export default function UserLocationMarkerSvg({
   color = '#10B981',
   size = 40,
-  spin = true,
-  spinDuration = 3000,
+  spin = false,
+  spinDuration = 6000, // slower by default
+  pulse = false,
+  pulseDuration = 900,
 }) {
-  // Animation value (0..1)
   const spinAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(0)).current;
   const spinRef = useRef(null);
+  const pulseRef = useRef(null);
 
   useEffect(() => {
-    // Start or stop the looping rotation depending on `spin`
     if (spin) {
-      // Reset to 0 to avoid jump when toggling
       spinAnim.setValue(0);
       spinRef.current = Animated.loop(
         Animated.timing(spinAnim, {
@@ -41,7 +40,6 @@ export default function UserLocationMarkerSvg({
       );
       spinRef.current.start();
     } else {
-      // stop if running
       if (spinRef.current) {
         spinRef.current.stop();
         spinRef.current = null;
@@ -57,13 +55,54 @@ export default function UserLocationMarkerSvg({
     };
   }, [spin, spinDuration, spinAnim]);
 
-  // Interpolate numeric animation value to rotation degrees
+  useEffect(() => {
+    if (pulse) {
+      pulseAnim.setValue(0);
+      pulseRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: pulseDuration / 2,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0,
+            duration: pulseDuration / 2,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+        { iterations: -1 }
+      );
+      pulseRef.current.start();
+    } else {
+      if (pulseRef.current) {
+        pulseRef.current.stop();
+        pulseRef.current = null;
+      }
+      pulseAnim.setValue(0);
+    }
+
+    return () => {
+      if (pulseRef.current) {
+        pulseRef.current.stop();
+        pulseRef.current = null;
+      }
+    };
+  }, [pulse, pulseDuration, pulseAnim]);
+
   const rotate = spinAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
 
-  // SVG layout constants (kept conservative so nothing is clipped)
+  const scale = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.08],
+  });
+
+  // SVG layout constants (conservative to avoid clipping)
   const VIEWBOX_SIZE = 100;
   const CENTER = VIEWBOX_SIZE / 3; // tuned earlier to avoid clipping
   const MARGIN = 8;
@@ -75,6 +114,12 @@ export default function UserLocationMarkerSvg({
   const RING_RADIUS = MAX_RADIUS * 0.75;
   const RING_STROKE_WIDTH = 3;
 
+  // Pivot math: convert visual center from viewBox units to pixels
+  const pivotX = (CENTER / VIEWBOX_SIZE) * size;
+  const pivotY = (CENTER / VIEWBOX_SIZE) * size;
+  const translateToCenterX = size / 2 - pivotX;
+  const translateToCenterY = size / 2 - pivotY;
+
   return (
     <Animated.View
       style={{
@@ -82,9 +127,16 @@ export default function UserLocationMarkerSvg({
         height: size,
         alignItems: 'center',
         justifyContent: 'center',
-        transform: [{ rotate }],
+        // translate pivot -> rotate -> scale -> translate back
+        transform: [
+          { translateX: translateToCenterX },
+          { translateY: translateToCenterY },
+          { rotate },
+          { scale },
+          { translateX: -translateToCenterX },
+          { translateY: -translateToCenterY },
+        ],
       }}
-      // pointerEvents left default (marker taps pass through to Map)
     >
       <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
         {/* Glow */}
