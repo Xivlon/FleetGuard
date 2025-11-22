@@ -20,7 +20,7 @@ import ObstacleMarkers from '../components/ObstacleMarkers';
 import WaypointMarker from '../components/WaypointMarker';
 import MinecraftClock from '../components/MinecraftClock';
 import WaypointModal from '../components/WaypointModal';
-import SimpleLocationMarker from '../components/SimpleLocationMarker';
+import OrbitMarker from '../components/OrbitMarker';
 
 const COLORS = {
   primary: '#10B981',
@@ -784,7 +784,7 @@ export default function NavigationScreen({ navigation }) {
                 zIndex={1000}
                 flat={false}
               >
-                <SimpleLocationMarker color={COLORS.userLocation} size={50} />
+                <OrbitMarker color={COLORS.userLocation} size={50} />
               </Marker>
             );
           })()}
