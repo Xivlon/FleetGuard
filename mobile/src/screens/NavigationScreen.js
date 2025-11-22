@@ -580,68 +580,6 @@ export default function NavigationScreen({ navigation }) {
             </View>
           </>
         )}
-
-        {useMyLocation && currentLocation && (
-          <View style={styles.currentLocationDisplay}>
-            <Text style={styles.label}>Current Location (Start)</Text>
-            <Text style={styles.coordText}>
-              {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
-            </Text>
-          </View>
-        )}
-
-        {/* Toggle for using location name vs coordinates */}
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity
-            style={styles.toggleButton}
-            onPress={() => setUseLocationName(!useLocationName)}
-          >
-            <View style={[styles.checkbox, useLocationName && styles.checkboxChecked]}>
-              {useLocationName && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <Text style={styles.toggleLabel}>Search by location name</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.label}>Destination</Text>
-        {useLocationName ? (
-          <TextInput
-            style={styles.input}
-            value={destinationName}
-            onChangeText={setDestinationName}
-            placeholder="Enter city, address, or place name"
-            placeholderTextColor="#666"
-            autoCapitalize="words"
-          />
-        ) : (
-          <View style={styles.coordRow}>
-            <TextInput
-              style={styles.input}
-              value={endLat}
-              onChangeText={setEndLat}
-              placeholder="Latitude"
-              placeholderTextColor="#666"
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.input}
-              value={endLon}
-              onChangeText={setEndLon}
-              placeholder="Longitude"
-              placeholderTextColor="#666"
-              keyboardType="numeric"
-            />
-          </View>
-        )}
-
-        {useLocationName && endLat && endLon && (
-          <View style={styles.geocodedCoordsDisplay}>
-            <Text style={styles.geocodedCoordsText}>
-              📍 {parseFloat(endLat).toFixed(4)}, {parseFloat(endLon).toFixed(4)}
-            </Text>
-          </View>
-        )}
-
         <TouchableOpacity
           style={styles.calculateButton}
           onPress={calculateRoute}
@@ -687,6 +625,7 @@ export default function NavigationScreen({ navigation }) {
         </View>
       )}
 
+      {/* Map container */}
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
@@ -701,6 +640,7 @@ export default function NavigationScreen({ navigation }) {
             maximumZ={19}
             flipY={false}
           />
+
           <Marker
             coordinate={{
               latitude: parseFloat(startLat),
@@ -772,39 +712,42 @@ export default function NavigationScreen({ navigation }) {
               );
             }}
           />
-        {/* User Location Marker - Rendered LAST to appear on top of all other overlays */}
-        {userLocation && (
-          <Marker
-            coordinate={userLocation}
-            anchor={{ x: 0.5, y: 0.5 }}  // center of size x size box
-          >
-            <UserLocationMarkerSvg color={COLORS.userLocation} size={50} />
-          </Marker>
-        )}
 
-        {/* Minecraft-style Clock */}
-        <MinecraftClock />
+          {/* User Location Marker - Rendered LAST to appear on top of all other overlays */}
+          {userLocation && (
+            <Marker
+              coordinate={userLocation}
+              anchor={{ x: 0.5, y: 0.5 }}  // center of size x size box
+            >
+              <UserLocationMarkerSvg color={COLORS.userLocation} size={50} />
+            </Marker>
+          )}
+        </MapView>
+      </View>
 
-        {route && (
-          <TouchableOpacity
-            style={styles.followMeButton}
-            onPress={() => setFollowMe(!followMe)}
-          >
-            <Text style={styles.followMeButtonText}>
-              {followMe ? '📍 Following' : '📍 Follow Me'}
-            </Text>
-          </TouchableOpacity>
-        )}
+      {/* Minecraft-style Clock */}
+      <MinecraftClock />
 
-        {/* Exit Fullscreen Button */}
-        {isFullScreen && (
-          <TouchableOpacity
-            style={styles.exitFullscreenButton}
-            onPress={() => setIsFullScreen(false)}
-          >
-            <Text style={styles.exitFullscreenButtonText}>Exit Fullscreen</Text>
-          </TouchableOpacity>
-        )}
+      {route && (
+        <TouchableOpacity
+          style={styles.followMeButton}
+          onPress={() => setFollowMe(!followMe)}
+        >
+          <Text style={styles.followMeButtonText}>
+            {followMe ? '📍 Following' : '📍 Follow Me'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Exit Fullscreen Button */}
+      {isFullScreen && (
+        <TouchableOpacity
+          style={styles.exitFullscreenButton}
+          onPress={() => setIsFullScreen(false)}
+        >
+          <Text style={styles.exitFullscreenButtonText}>Exit Fullscreen</Text>
+        </TouchableOpacity>
+      )}
 
       {route && route.instructions && route.instructions.length > 0 && !isFullScreen && (
         <View style={styles.instructionsContainer}>
@@ -833,6 +776,29 @@ export default function NavigationScreen({ navigation }) {
                 </View>
               </View>
             ))}
+          </ScrollView>
+
+          {currentStep < route.instructions.length - 1 && (
+            <TouchableOpacity
+              style={styles.nextButton}
+              onPress={() => setCurrentStep(currentStep + 1)}
+            >
+              <Text style={styles.nextButtonText}>Next Step</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* Waypoint Creation Modal */}
+      <WaypointModal
+        visible={waypointModalVisible}
+        location={selectedLocation}
+        onClose={() => setWaypointModalVisible(false)}
+        onSubmit={handleWaypointSubmit}
+      />
+    </View>
+  );
+}
           </ScrollView>
           
           {currentStep < route.instructions.length - 1 && (
