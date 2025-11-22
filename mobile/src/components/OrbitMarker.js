@@ -18,8 +18,8 @@ export default function OrbitMarker({ color = '#10B981', size = 40 }) {
 
   // Original viewBox coordinates from orbit.svg (Lucide orbit icon)
   // The orbit icon is centered at (12, 12) in the 24x24 SVG viewBox
-  const ORIGINAL_VIEWBOX_X = 5;
-  const ORIGINAL_VIEWBOX_Y = 5;
+  const ORIGINAL_VIEWBOX_X = 15;
+  const ORIGINAL_VIEWBOX_Y = 15;
 
   // Icon positioning and scale within the normalized viewBox
   // The new SVG is already centered and properly sized at 24x24
