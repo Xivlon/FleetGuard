@@ -8,12 +8,12 @@ export default function UserLocationMarkerSvg({
   const VIEWBOX_SIZE = 200;
   const CENTER = VIEWBOX_SIZE / 2; // 50
 
-  const ORIGINAL_VIEWBOX_X = 12;
-  const ORIGINAL_VIEWBOX_Y = 12;
+  const ORIGINAL_VIEWBOX_X = 14;
+  const ORIGINAL_VIEWBOX_Y = 14;
 
   const ICON_SCALE = 3.0;
   const RING_RADIUS = VIEWBOX_SIZE * 0.34;
-  const RING_STROKE_WIDTH = 4;
+  const RING_STROKE_WIDTH = 5;
 
   return (
     <Svg
