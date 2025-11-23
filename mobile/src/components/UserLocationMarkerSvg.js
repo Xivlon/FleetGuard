@@ -32,7 +32,6 @@ export default function UserLocationMarkerSvg({
   orbitDuration = 3000,
 }) 
   // Animated values
-  const pulseAnim = useRef(new Animated.Value(0)).current;
   const orbitAnim = useRef(new Animated.Value(0)).current;
 
   // Refs to keep loop instances so we can stop them
