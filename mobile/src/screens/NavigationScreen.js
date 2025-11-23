@@ -121,6 +121,15 @@ export default function NavigationScreen({ navigation }) {
   const lastPositionRef = useRef(null);
   const initialCameraSetRef = useRef(false);
 
+  // Refs & helpers to reduce flapping
+  const lastSampleAtRef = useRef(null);         // timestamp (ms) of last location sample
+  const resetLockTimerRef = useRef(null);       // timer to reset lock state if no samples
+  const sendVehiclePositionRef = useRef(sendVehiclePosition);
+
+  useEffect(() => {
+    sendVehiclePositionRef.current = sendVehiclePosition;
+  }, [sendVehiclePosition]);
+
   // --- Location lock state (hysteresis) ---
   const [lockState, setLockState] = useState({
     isLocked: false,
@@ -129,12 +138,26 @@ export default function NavigationScreen({ navigation }) {
     lastGoodAt: null,
   });
 
+  // Marker tracksViewChanges management to avoid continuous re-renders on Android
+  const [markerTracks, setMarkerTracks] = useState(true);
+  useEffect(() => {
+    // Keep markerTracks true while searching or until we are locked and settled a bit.
+    if (permissionStatus === 'checking' || !lockState.isLocked) {
+      setMarkerTracks(true);
+      return;
+    }
+    // we just became locked — keep tracks true for a short finalization window then disable to improve perf
+    const t = setTimeout(() => setMarkerTracks(false), 900);
+    return () => clearTimeout(t);
+  }, [permissionStatus, lockState.isLocked]);
+
   // Lock tuning constants (tweak if needed)
   const LOCK_GOOD_THRESHOLD_METERS = 50;    // <= this is counted as "good"
   const LOCK_GOOD_REQUIRED = 3;             // consecutive good samples to lock
   const LOCK_BAD_THRESHOLD_METERS = 120;    // >= this is counted as "bad"
   const LOCK_BAD_REQUIRED = 2;              // consecutive bad samples to unlock
   const LOCK_RECENT_WINDOW_MS = 10_000;     // sample freshness window
+  const LOCK_NO_SAMPLE_GRACE_MS = 4000;     // grace window before treating missing samples as reset
 
   // Helper: normalize accuracy regardless of provider shape
   const getAccuracy = (loc) => {
@@ -159,10 +182,23 @@ export default function NavigationScreen({ navigation }) {
 
   // Update lockState based on incoming effectiveLocation changes
   useEffect(() => {
+    // If there is no effectiveLocation, start a grace timer instead of resetting immediately.
+    // This avoids flipping the UI when the watcher restarts briefly.
     if (!effectiveLocation) {
-      // No location yet
-      setLockState({ isLocked: false, consecutiveGood: 0, consecutiveBad: 0, lastGoodAt: null });
+      if (!resetLockTimerRef.current) {
+        resetLockTimerRef.current = setTimeout(() => {
+          console.log('[Lock] no samples for grace window — resetting lock state');
+          setLockState({ isLocked: false, consecutiveGood: 0, consecutiveBad: 0, lastGoodAt: null });
+          resetLockTimerRef.current = null;
+        }, LOCK_NO_SAMPLE_GRACE_MS);
+      }
       return;
+    }
+
+    // If we have a sample, clear any pending reset timer immediately
+    if (resetLockTimerRef.current) {
+      clearTimeout(resetLockTimerRef.current);
+      resetLockTimerRef.current = null;
     }
 
     const accuracy = getAccuracy(effectiveLocation);
@@ -302,11 +338,25 @@ export default function NavigationScreen({ navigation }) {
           const currentPosition = {
             latitude: coords?.latitude || latitude,
             longitude: coords?.longitude || longitude,
-            // forward accuracy/timestamp when available
             accuracy: coords?.accuracy ?? location.accuracy,
             coords: coords ?? undefined,
             timestamp: location.timestamp ?? Date.now(),
           };
+
+          // Inter-sample timing diagnostics
+          const now = Date.now();
+          const last = lastSampleAtRef.current;
+          if (last) {
+            const deltaMs = now - last;
+            console.log(`[Location] sample interval ${deltaMs}ms`);
+          }
+          lastSampleAtRef.current = now;
+
+          // Clear the pending lock-reset when a new sample arrives
+          if (resetLockTimerRef.current) {
+            clearTimeout(resetLockTimerRef.current);
+            resetLockTimerRef.current = null;
+          }
 
           console.log('[NavigationScreen] Location updated:', {
             lat: currentPosition.latitude.toFixed(6),
@@ -322,9 +372,9 @@ export default function NavigationScreen({ navigation }) {
             heading = calculateHeading(lastPositionRef.current, currentPosition);
           }
 
-          // Send position to backend
-          if (sendVehiclePosition) {
-            sendVehiclePosition(
+          // Send position to backend using stable ref
+          if (sendVehiclePositionRef.current) {
+            sendVehiclePositionRef.current(
               vehicleId,
               currentPosition.latitude,
               currentPosition.longitude,
@@ -373,8 +423,13 @@ export default function NavigationScreen({ navigation }) {
         console.log('[NavigationScreen] Stopping location tracking');
         subscription.remove();
       }
+      if (resetLockTimerRef.current) {
+        clearTimeout(resetLockTimerRef.current);
+        resetLockTimerRef.current = null;
+      }
     };
-  }, [followMe, vehicleId, sendVehiclePosition]);
+  // Narrow dependencies to avoid restarting because of function identity changes
+  }, [followMe, vehicleId]);
 
   // Auto-rerouting effect - monitors obstacles and traffic
   useEffect(() => {
@@ -900,7 +955,7 @@ export default function NavigationScreen({ navigation }) {
           <Marker
             coordinate={normalizeCoord(effectiveLocation)}
             anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={isLockingOntoLocation || !isLocked}
+            tracksViewChanges={markerTracks}
           >
             <UserLocationMarkerSvg
               color={COLORS.userLocation}
