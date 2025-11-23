@@ -1,4 +1,3 @@
-// mobile/src/screens/navigation-screen3.js
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -38,18 +37,61 @@ const COLORS = {
 // Helper function to normalize coordinates from either array [lng, lat] or object {latitude, longitude}
 const normalizeCoord = (coord) => {
   if (!coord) return null;
-  
+
   // If it's already an object with latitude and longitude, return it
   if (typeof coord === 'object' && coord.latitude !== undefined && coord.longitude !== undefined) {
     return { latitude: coord.latitude, longitude: coord.longitude };
   }
-  
+
   // If it's an array [lng, lat], convert to object
   if (Array.isArray(coord) && coord.length >= 2) {
     return { latitude: coord[1], longitude: coord[0] };
   }
-  
+
   return null;
+};
+
+/**
+ * Merge two location objects and prefer fields from `primary` when present.
+ * This ensures we don't lose accuracy/timestamp/coords when currentLocation
+ * only contains latitude/longitude.
+ *
+ * primary: usually currentLocation (from context)
+ * fallback: usually userLocation (from watchPosition)
+ */
+const mergeLocations = (primary, fallback) => {
+  if (!primary && !fallback) return null;
+
+  const pCoords = primary?.coords;
+  const fCoords = fallback?.coords;
+
+  const latitude = primary?.latitude ?? pCoords?.latitude ?? fallback?.latitude ?? fCoords?.latitude;
+  const longitude = primary?.longitude ?? pCoords?.longitude ?? fallback?.longitude ?? fCoords?.longitude;
+
+  // prefer coords.accuracy, then top-level accuracy
+  const accuracy =
+    (pCoords && typeof pCoords.accuracy === 'number') ? pCoords.accuracy
+      : (typeof primary?.accuracy === 'number') ? primary.accuracy
+        : (fCoords && typeof fCoords.accuracy === 'number') ? fCoords.accuracy
+          : (typeof fallback?.accuracy === 'number') ? fallback.accuracy
+            : undefined;
+
+  // prefer coords object from primary else fallback
+  const coords = pCoords ?? fCoords ?? undefined;
+
+  // prefer timestamp from primary then fallback; normalize if it's a Date string/number
+  const rawTs = primary?.timestamp ?? fallback?.timestamp;
+  const timestamp = rawTs ? (typeof rawTs === 'number' ? rawTs : new Date(rawTs).getTime()) : undefined;
+
+  const merged = {
+    latitude,
+    longitude,
+    ...(accuracy !== undefined ? { accuracy } : {}),
+    ...(coords ? { coords } : {}),
+    ...(timestamp !== undefined ? { timestamp } : {}),
+  };
+
+  return merged;
 };
 
 export default function NavigationScreen({ navigation }) {
@@ -102,8 +144,8 @@ export default function NavigationScreen({ navigation }) {
     return typeof coordsAccuracy === 'number' ? coordsAccuracy : (typeof topAccuracy === 'number' ? topAccuracy : Infinity);
   };
 
-  // Decide canonical effectiveLocation so UI uses one source
-  const effectiveLocation = currentLocation || userLocation;
+  // Decide canonical effectiveLocation so UI uses merged source
+  const effectiveLocation = mergeLocations(currentLocation, userLocation);
 
   // Debug logs to help diagnose location behavior (remove in production)
   useEffect(() => {
@@ -111,7 +153,9 @@ export default function NavigationScreen({ navigation }) {
     console.log('[NavigationScreen] currentLocation:', currentLocation);
     console.log('[NavigationScreen] userLocation:', userLocation);
     console.log('[NavigationScreen] effectiveLocation:', effectiveLocation);
-  }, [permissionStatus, currentLocation, userLocation]);
+    const acc = effectiveLocation ? (effectiveLocation.coords?.accuracy ?? effectiveLocation.accuracy) : undefined;
+    console.log('[NavigationScreen] effectiveLocation.accuracy:', acc);
+  }, [permissionStatus, currentLocation, userLocation, effectiveLocation]);
 
   // Update lockState based on incoming effectiveLocation changes
   useEffect(() => {
@@ -137,12 +181,14 @@ export default function NavigationScreen({ navigation }) {
       setLockState(prev => {
         const consecutiveBad = prev.consecutiveBad + 1;
         const shouldUnlock = consecutiveBad >= LOCK_BAD_REQUIRED;
-        return {
+        const newState = {
           isLocked: shouldUnlock ? false : prev.isLocked,
           consecutiveGood: 0,
           consecutiveBad,
           lastGoodAt: prev.lastGoodAt,
         };
+        console.log('[Lock] stale ->', newState);
+        return newState;
       });
       return;
     }
@@ -152,12 +198,14 @@ export default function NavigationScreen({ navigation }) {
       setLockState(prev => {
         const consecutiveGood = prev.consecutiveGood + 1;
         const isLocked = consecutiveGood >= LOCK_GOOD_REQUIRED;
-        return {
+        const newState = {
           isLocked,
           consecutiveGood,
           consecutiveBad: 0,
           lastGoodAt: Date.now(),
         };
+        console.log('[Lock] good ->', newState);
+        return newState;
       });
       return;
     }
@@ -167,12 +215,14 @@ export default function NavigationScreen({ navigation }) {
       setLockState(prev => {
         const consecutiveBad = prev.consecutiveBad + 1;
         const isLocked = consecutiveBad >= LOCK_BAD_REQUIRED ? false : prev.isLocked;
-        return {
+        const newState = {
           isLocked,
           consecutiveGood: 0,
           consecutiveBad,
           lastGoodAt: prev.lastGoodAt,
         };
+        console.log('[Lock] bad ->', newState);
+        return newState;
       });
       return;
     }
@@ -181,14 +231,21 @@ export default function NavigationScreen({ navigation }) {
     setLockState(prev => {
       const consecutiveGood = Math.max(0, prev.consecutiveGood - 1);
       const consecutiveBad = Math.max(0, prev.consecutiveBad - 1);
-      return {
+      const newState = {
         isLocked: prev.isLocked,
         consecutiveGood,
         consecutiveBad,
         lastGoodAt: prev.lastGoodAt,
       };
+      console.log('[Lock] mid ->', newState);
+      return newState;
     });
   }, [effectiveLocation]); // run when effectiveLocation changes
+
+  // Log lockState transitions for easier debugging
+  useEffect(() => {
+    console.log('[Lock state]', lockState);
+  }, [lockState]);
 
   // Derive booleans used by UI (pulse/spin)
   const isLockingOntoLocation = (
@@ -204,19 +261,19 @@ export default function NavigationScreen({ navigation }) {
   useEffect(() => {
     if (routes[vehicleId]) {
       const newRoute = routes[vehicleId];
-      const routeChanged = !route || 
+      const routeChanged = !route ||
         route.timestamp !== newRoute.timestamp ||
         route.coordinates?.length !== newRoute.coordinates?.length;
-      
+
       if (routeChanged) {
         // If we have an existing route and it changed, we're receiving a re-route
         if (route && route.timestamp !== newRoute.timestamp) {
           console.log('Route updated - re-routing complete');
         }
-        
+
         setRoute(newRoute);
         setIsRerouting(false);
-        
+
         // If following and new route arrives, fit camera to route
         if (followMe && mapRef.current && newRoute.coordinates?.length > 0) {
           setTimeout(() => {
@@ -450,15 +507,15 @@ export default function NavigationScreen({ navigation }) {
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to calculate route');
       }
-      
+
       setRoute(data);
       setCurrentStep(0);
       setIsFullScreen(true); // Enter fullscreen when route is calculated
-      
+
       if (data.fallback) {
         Alert.alert(
           'Using Fallback Routing',
@@ -848,9 +905,10 @@ export default function NavigationScreen({ navigation }) {
             <UserLocationMarkerSvg
               color={COLORS.userLocation}
               size={50}
-              orbit={isLocked}          // spin only when we have a stable lock
-              spinDuration={6000}       // slower rotation
-              pulse={isLockingOntoLocation} // pulse only while searching
+              orbit={isLocked}          // orbit when locked
+              spin={false}
+              spinDuration={6000}
+              pulse={isLockingOntoLocation} // pulse while searching
               pulseDuration={900}
             />
           </Marker>
