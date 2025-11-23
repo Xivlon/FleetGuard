@@ -8,8 +8,10 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 /**
  * UserLocationMarkerSvg
  * - Rotates the whole icon around its visual center.
- * - Pulses by animating the glow circle's radius & opacity (centered).
- * - The ring now pulses (strokeWidth + opacity) in sync with the glow.
+ * - Pulses the glow and ring in sync; glow can extend a bit beyond the marker box.
+ *
+ * Props:
+ * - color, size, spin, spinDuration, pulse, pulseDuration
  */
 export default function UserLocationMarkerSvg({
   color = '#10B981',
@@ -78,7 +80,6 @@ export default function UserLocationMarkerSvg({
       }
       pulseAnim.setValue(0);
     }
-
     return () => {
       if (pulseRef.current) {
         pulseRef.current.stop();
@@ -93,27 +94,28 @@ export default function UserLocationMarkerSvg({
     outputRange: [0, 360],
   });
 
-  // pulse-driven glow radius & opacity
+  // pulse-driven glow radius & opacity (in viewBox units)
   const VIEWBOX_SIZE = 100;
   const CENTER = VIEWBOX_SIZE / 3; // visual center chosen earlier
-  const MARGIN = 8;
-  const MAX_RADIUS = CENTER - MARGIN; // base glow radius
+  const MARGIN = 6;
+  const MAX_RADIUS = CENTER - MARGIN; // base glow radius in viewBox units
 
+  // Make the glow extend further when pulsing (so it can overflow)
   const GLOW_MIN = MAX_RADIUS;
-  const GLOW_MAX = MAX_RADIUS * 1.25;
+  const GLOW_MAX = MAX_RADIUS * 1.6; // bigger extension on pulse
   const glowRadius = pulseAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [GLOW_MIN, GLOW_MAX],
   });
   const glowOpacity = pulseAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.20, 0.45],
+    outputRange: [0.18, 0.5],
   });
 
-  // ring base and animated stroke/opacity
+  // Ring pulse - strokeWidth and opacity
   const RING_BASE = MAX_RADIUS * 0.75;
   const RING_STROKE_BASE = 3;
-  const RING_STROKE_MAX = RING_STROKE_BASE * 1.5;
+  const RING_STROKE_MAX = RING_STROKE_BASE * 1.6;
   const ringStroke = pulseAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [RING_STROKE_BASE, RING_STROKE_MAX],
@@ -127,9 +129,32 @@ export default function UserLocationMarkerSvg({
   const ORIGINAL_VIEWBOX_X = 12;
   const ORIGINAL_VIEWBOX_Y = 12;
 
+  // render slightly larger SVG so glow can bleed out
+  const bleedFactor = 0.6; // fraction of size to extend beyond marker box
+  const svgExtra = size * bleedFactor;
+  const svgSize = size + svgExtra;
+
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'visible', // allow SVG to draw outside this box
+      }}
+    >
+      {/* Position the larger SVG so its center lines up with the marker center */}
+      <Svg
+        width={svgSize}
+        height={svgSize}
+        viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
+        style={{
+          position: 'absolute',
+          left: -(svgExtra / 2),
+          top: -(svgExtra / 2),
+        }}
+      >
         {/* Animated group rotates the whole icon around CENTER */}
         <AnimatedG rotation={rotation} originX={CENTER} originY={CENTER}>
           {/* Animated glow circle (centered) */}
