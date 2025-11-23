@@ -6,30 +6,32 @@ const AnimatedG = Animated.createAnimatedComponent(G);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 /**
- * UserLocationMarkerSvg (spin removed)
+ * UserLocationMarkerSvg
  *
  * Props:
  * - color: hex
  * - size: px
+ * - spin: boolean (kept in props for compatibility but no longer used)
+ * - spinDuration: ms (kept for compatibility)
  * - pulse: boolean (glow pulse)
  * - pulseDuration: ms
  * - orbit: boolean (orbit arcs & satellites)
  * - orbitDuration: ms
  *
- * Improvements kept:
- * - Logs prop changes (temporary, remove in prod)
- * - Smoothly animates pulse to 0 when stopping
- * - Stops loops reliably and resets values
+ * This variant retains the original dimensions from user-location-marker2.js
+ * but removes the whole-icon rotating/spin animation. Only pulse and orbit remain.
  */
 export default function UserLocationMarkerSvg({
   color = '#10B981',
   size = 40,
+  spin = false,
+  spinDuration = 6000,
   pulse = false,
   pulseDuration = 900,
   orbit = false,
   orbitDuration = 3000,
 }) {
-  // Animated values
+  // Animated values (spin removed)
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const orbitAnim = useRef(new Animated.Value(0)).current;
 
@@ -40,8 +42,8 @@ export default function UserLocationMarkerSvg({
   // Debug: show incoming props so we can verify state
   useEffect(() => {
     // eslint-disable-next-line no-console
-    console.log('[UserLocationMarkerSvg] props', { pulse, orbit, pulseDuration, orbitDuration });
-  }, [pulse, orbit, pulseDuration, orbitDuration]);
+    console.log('[UserLocationMarkerSvg] props', { /* spin kept for compatibility */ pulse, orbit, spinDuration, pulseDuration, orbitDuration });
+  }, [pulse, orbit, spinDuration, pulseDuration, orbitDuration]);
 
   // Helper to smoothly stop an animation value to 0
   const smoothReset = (anim, duration = 250) => {
@@ -122,13 +124,13 @@ export default function UserLocationMarkerSvg({
     };
   }, [orbit, orbitDuration, orbitAnim]);
 
-  // Interpolations
+  // Interpolations (no spin/rotation)
   const orbitRotation = orbitAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 360],
   });
 
-    const VIEWBOX_SIZE = 100;
+  const VIEWBOX_SIZE = 100;
   const CENTER = VIEWBOX_SIZE / 3;
   const MARGIN = 8;
   const MAX_RADIUS = CENTER - MARGIN;
@@ -161,6 +163,12 @@ export default function UserLocationMarkerSvg({
   const ICON_SCALE = 2.8;
   const ORIGINAL_VIEWBOX_X = 12;
   const ORIGINAL_VIEWBOX_Y = 12;
+
+  // For opposite satellite
+  const orbitRotationOpposite = orbitAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [180, 540],
+  });
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
@@ -206,6 +214,13 @@ export default function UserLocationMarkerSvg({
             <Circle
               cx="19"
               cy="5"
+              r="2"
+              fill={color}
+              transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            />
+            <Circle
+              cx="5"
+              cy="19"
               r="2"
               fill={color}
               transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
