@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+// <full file contents updated — same path as before>
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -167,8 +168,23 @@ export default function NavigationScreen({ navigation }) {
     return typeof coordsAccuracy === 'number' ? coordsAccuracy : (typeof topAccuracy === 'number' ? topAccuracy : Infinity);
   };
 
-  // Decide canonical effectiveLocation so UI uses merged source
-  const effectiveLocation = mergeLocations(currentLocation, userLocation);
+  // Memoize the merged effectiveLocation so its object identity is stable
+  const effectiveLocation = useMemo(
+    () => mergeLocations(currentLocation, userLocation),
+    [
+      currentLocation?.latitude,
+      currentLocation?.longitude,
+      // include accuracy & timestamp fields from both sources so memo updates only when values change
+      currentLocation?.accuracy,
+      currentLocation?.timestamp,
+      currentLocation?.coords?.accuracy,
+      userLocation?.latitude,
+      userLocation?.longitude,
+      userLocation?.accuracy,
+      userLocation?.timestamp,
+      userLocation?.coords?.accuracy,
+    ]
+  );
 
   // Debug logs to help diagnose location behavior (remove in production)
   useEffect(() => {
@@ -181,7 +197,13 @@ export default function NavigationScreen({ navigation }) {
   }, [permissionStatus, currentLocation, userLocation, effectiveLocation]);
 
   // Update lockState based on incoming effectiveLocation changes
+  // Depend on primitives so effect triggers only when sample values change
   useEffect(() => {
+    const sampleTimestamp = effectiveLocation?.timestamp;
+    const sampleAccuracy = effectiveLocation ? getAccuracy(effectiveLocation) : undefined;
+    const sampleLat = effectiveLocation?.latitude;
+    const sampleLon = effectiveLocation?.longitude;
+
     // If there is no effectiveLocation, start a grace timer instead of resetting immediately.
     // This avoids flipping the UI when the watcher restarts briefly.
     if (!effectiveLocation) {
@@ -201,13 +223,9 @@ export default function NavigationScreen({ navigation }) {
       resetLockTimerRef.current = null;
     }
 
-    const accuracy = getAccuracy(effectiveLocation);
-    // If the location provider supplies timestamp (ms or ISO), normalize it; otherwise use now
-    let timestampMs = Date.now();
-    if (effectiveLocation.timestamp) {
-      const t = effectiveLocation.timestamp;
-      timestampMs = typeof t === 'number' ? t : new Date(t).getTime();
-    }
+    const accuracy = sampleAccuracy;
+    let timestampMs = typeof sampleTimestamp === 'number' ? sampleTimestamp : (sampleTimestamp ? new Date(sampleTimestamp).getTime() : undefined);
+    if (!timestampMs) timestampMs = Date.now();
 
     console.log(`[Lock] accuracy=${accuracy}ms timestamp=${timestampMs}`);
 
@@ -276,7 +294,13 @@ export default function NavigationScreen({ navigation }) {
       console.log('[Lock] mid ->', newState);
       return newState;
     });
-  }, [effectiveLocation]); // run when effectiveLocation changes
+  // run when the essential primitives of effectiveLocation change
+  }, [
+    effectiveLocation?.timestamp,
+    effectiveLocation ? getAccuracy(effectiveLocation) : undefined,
+    effectiveLocation?.latitude,
+    effectiveLocation?.longitude,
+  ]);
 
   // Log lockState transitions for easier debugging
   useEffect(() => {
@@ -1046,6 +1070,7 @@ export default function NavigationScreen({ navigation }) {
   );
 }
 
+// styles omitted here for brevity (unchanged in your code); keep the same styles block as before
 const darkMapStyle = [
   { elementType: 'geometry', stylers: [{ color: '#212121' }] },
   { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
@@ -1058,273 +1083,51 @@ const darkMapStyle = [
 ];
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  locationStatusBar: {
-    backgroundColor: COLORS.card,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  locationStatusContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  locationStatusText: {
-    color: COLORS.text,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  permissionActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  permissionButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 4,
-  },
-  permissionButtonText: {
-    color: COLORS.background,
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  toggleContainer: {
-    marginBottom: 16,
-  },
-  toggleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 8,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: COLORS.primary,
-  },
-  checkmark: {
-    color: COLORS.background,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  toggleLabel: {
-    color: COLORS.text,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  currentLocationDisplay: {
-    marginBottom: 16,
-  },
-  coordText: {
-    color: COLORS.primary,
-    fontSize: 12,
-    fontFamily: 'monospace',
-  },
-  inputContainer: {
-    padding: 16,
-    backgroundColor: COLORS.card,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.primary,
-  },
-  label: {
-    color: COLORS.text,
-    fontSize: 13,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  coordRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    color: COLORS.text,
-    padding: 10,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    fontSize: 14,
-    minHeight: 44,
-  },
-  calculateButton: {
-    backgroundColor: COLORS.primary,
-    padding: 12,
-    borderRadius: 6,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  calculateButtonText: {
-    color: COLORS.background,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  routeInfoContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 16,
-    backgroundColor: COLORS.card,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.primary,
-  },
-  routeInfoText: {
-    color: COLORS.text,
-    fontSize: 12,
-  },
-  warningText: {
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  mapContainer: {
-    flex: 1,
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-  },
-  instructionsContainer: {
-    maxHeight: 200,
-    backgroundColor: COLORS.card,
-    borderTopWidth: 2,
-    borderTopColor: COLORS.primary,
-    padding: 16,
-  },
-  instructionsTitle: {
-    color: COLORS.primary,
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  instructionsList: {
-    maxHeight: 120,
-  },
-  instructionItem: {
-    flexDirection: 'row',
-    padding: 16,
-    marginBottom: 12,
-    backgroundColor: COLORS.background,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  instructionItemActive: {
-    borderColor: COLORS.primary,
-    borderWidth: 2,
-  },
-  instructionNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  instructionNumberText: {
-    color: COLORS.background,
-    fontWeight: 'bold',
-  },
-  instructionContent: {
-    flex: 1,
-  },
-  instructionText: {
-    color: COLORS.text,
-    fontSize: 14,
-  },
-  instructionDistance: {
-    color: COLORS.primary,
-    fontSize: 12,
-    marginTop: 4,
-  },
-  nextButton: {
-    backgroundColor: COLORS.primary,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  nextButtonText: {
-    color: COLORS.background,
-    fontWeight: 'bold',
-  },
-  reroutingBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.card,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.primary,
-    gap: 8,
-  },
-  reroutingText: {
-    color: COLORS.primary,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  followMeButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 24,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  followMeButtonText: {
-    color: COLORS.background,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  exitFullscreenButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    backgroundColor: COLORS.card,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  exitFullscreenButtonText: {
-    color: COLORS.primary,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  geocodedCoordsDisplay: {
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  geocodedCoordsText: {
-    color: COLORS.primary,
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
+  /* same styles as your previous file; unchanged */
+  container: { flex: 1, backgroundColor: COLORS.background },
+  locationStatusBar: { backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.primary, paddingVertical: 12, paddingHorizontal: 16 },
+  locationStatusContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  locationStatusText: { color: COLORS.text, fontSize: 12, fontWeight: 'bold' },
+  permissionActions: { flexDirection: 'row', gap: 8 },
+  permissionButton: { backgroundColor: COLORS.primary, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 4 },
+  permissionButtonText: { color: COLORS.background, fontSize: 11, fontWeight: 'bold' },
+  toggleContainer: { marginBottom: 16 },
+  toggleButton: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  checkbox: { width: 22, height: 22, borderWidth: 2, borderColor: COLORS.primary, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
+  checkboxChecked: { backgroundColor: COLORS.primary },
+  checkmark: { color: COLORS.background, fontSize: 14, fontWeight: 'bold' },
+  toggleLabel: { color: COLORS.text, fontSize: 13, fontWeight: '600' },
+  currentLocationDisplay: { marginBottom: 16 },
+  coordText: { color: COLORS.primary, fontSize: 12, fontFamily: 'monospace' },
+  inputContainer: { padding: 16, backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.primary },
+  label: { color: COLORS.text, fontSize: 13, fontWeight: 'bold', marginBottom: 8 },
+  coordRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  input: { flex: 1, backgroundColor: COLORS.background, color: COLORS.text, padding: 10, borderRadius: 6, borderWidth: 1.5, borderColor: COLORS.primary, fontSize: 14, minHeight: 44 },
+  calculateButton: { backgroundColor: COLORS.primary, padding: 12, borderRadius: 6, alignItems: 'center', marginTop: 12 },
+  calculateButtonText: { color: COLORS.background, fontSize: 14, fontWeight: 'bold' },
+  routeInfoContainer: { flexDirection: 'row', justifyContent: 'space-around', padding: 16, backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.primary },
+  routeInfoText: { color: COLORS.text, fontSize: 12 },
+  warningText: { color: '#EF4444', fontSize: 12, fontWeight: 'bold' },
+  mapContainer: { flex: 1 },
+  map: { width: '100%', height: '100%' },
+  instructionsContainer: { maxHeight: 200, backgroundColor: COLORS.card, borderTopWidth: 2, borderTopColor: COLORS.primary, padding: 16 },
+  instructionsTitle: { color: COLORS.primary, fontSize: 16, fontWeight: 'bold', marginBottom: 12 },
+  instructionsList: { maxHeight: 120 },
+  instructionItem: { flexDirection: 'row', padding: 16, marginBottom: 12, backgroundColor: COLORS.background, borderRadius: 8, borderWidth: 1, borderColor: '#333' },
+  instructionItemActive: { borderColor: COLORS.primary, borderWidth: 2 },
+  instructionNumber: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  instructionNumberText: { color: COLORS.background, fontWeight: 'bold' },
+  instructionContent: { flex: 1 },
+  instructionText: { color: COLORS.text, fontSize: 14 },
+  instructionDistance: { color: COLORS.primary, fontSize: 12, marginTop: 4 },
+  nextButton: { backgroundColor: COLORS.primary, padding: 12, borderRadius: 8, alignItems: 'center', marginTop: 8 },
+  nextButtonText: { color: COLORS.background, fontWeight: 'bold' },
+  reroutingBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.card, paddingVertical: 8, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: COLORS.primary, gap: 8 },
+  reroutingText: { color: COLORS.primary, fontSize: 14, fontWeight: 'bold' },
+  followMeButton: { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.primary, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 24, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
+  followMeButtonText: { color: COLORS.background, fontSize: 14, fontWeight: 'bold' },
+  exitFullscreenButton: { position: 'absolute', top: 50, right: 20, backgroundColor: COLORS.card, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 24, borderWidth: 2, borderColor: COLORS.primary, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
+  exitFullscreenButtonText: { color: COLORS.primary, fontSize: 16, fontWeight: 'bold' },
+  geocodedCoordsDisplay: { marginTop: 8, marginBottom: 12 },
+  geocodedCoordsText: { color: COLORS.primary, fontSize: 12, fontStyle: 'italic' },
 });
