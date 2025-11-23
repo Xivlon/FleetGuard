@@ -11,8 +11,6 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
  * Props:
  * - color: hex
  * - size: px
- * - spin: boolean (whole-icon rotate)
- * - spinDuration: ms
  * - pulse: boolean (glow pulse)
  * - pulseDuration: ms
  * - orbit: boolean (orbit arcs & satellites)
@@ -30,8 +28,9 @@ export default function UserLocationMarkerSvg({
   pulseDuration = 900,
   orbit = false,
   orbitDuration = 3000,
-}) 
+}) {
   // Animated values
+  const pulseAnim = useRef(new Animated.Value(0)).current;
   const orbitAnim = useRef(new Animated.Value(0)).current;
 
   // Refs to keep loop instances so we can stop them
@@ -41,7 +40,7 @@ export default function UserLocationMarkerSvg({
   // Debug: show incoming props so we can verify state
   useEffect(() => {
     // eslint-disable-next-line no-console
-    console.log('[UserLocationMarkerSvg] props', { spin, pulse, orbit, spinDuration, pulseDuration, orbitDuration });
+    console.log('[UserLocationMarkerSvg] props', { pulse, orbit, pulseDuration, orbitDuration });
   }, [pulse, orbit, pulseDuration, orbitDuration]);
 
   // Helper to smoothly stop an animation value to 0
@@ -55,6 +54,7 @@ export default function UserLocationMarkerSvg({
       }).start(() => resolve());
     });
   };
+
   // Pulse (glow)
   useEffect(() => {
     if (pulse) {
@@ -165,6 +165,7 @@ export default function UserLocationMarkerSvg({
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
+        <AnimatedG rotation={rotation} originX={CENTER} originY={CENTER}>
           <AnimatedCircle cx={CENTER} cy={CENTER} r={glowRadius} fill={color} opacity={glowOpacity} />
 
           <Circle cx={CENTER} cy={CENTER} r={RING_BASE} stroke={color} strokeWidth={3} fill="none" opacity={INNER_RING_OPACITY} />
