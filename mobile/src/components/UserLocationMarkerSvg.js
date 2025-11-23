@@ -8,7 +8,8 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 /**
  * UserLocationMarkerSvg
  * - Rotates the whole icon around its visual center.
- * - Pulses by animating the glow circle's radius & opacity (centered), avoiding scale-origin issues.
+ * - Pulses by animating the glow circle's radius & opacity (centered).
+ * - The ring now pulses (strokeWidth + opacity) in sync with the glow.
  */
 export default function UserLocationMarkerSvg({
   color = '#10B981',
@@ -97,8 +98,9 @@ export default function UserLocationMarkerSvg({
   const CENTER = VIEWBOX_SIZE / 3; // visual center chosen earlier
   const MARGIN = 8;
   const MAX_RADIUS = CENTER - MARGIN; // base glow radius
-  const GLOW_MIN = MAX_RADIUS;        // base
-  const GLOW_MAX = MAX_RADIUS * 1.25; // pulsed max
+
+  const GLOW_MIN = MAX_RADIUS;
+  const GLOW_MAX = MAX_RADIUS * 1.25;
   const glowRadius = pulseAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [GLOW_MIN, GLOW_MAX],
@@ -108,12 +110,17 @@ export default function UserLocationMarkerSvg({
     outputRange: [0.20, 0.45],
   });
 
-  // optional subtle ring stroke change for pulse
+  // ring base and animated stroke/opacity
   const RING_BASE = MAX_RADIUS * 0.75;
   const RING_STROKE_BASE = 3;
+  const RING_STROKE_MAX = RING_STROKE_BASE * 1.5;
   const ringStroke = pulseAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [RING_STROKE_BASE, RING_STROKE_BASE * 1.15],
+    outputRange: [RING_STROKE_BASE, RING_STROKE_MAX],
+  });
+  const ringOpacity = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.95, 1],
   });
 
   const ICON_SCALE = 2.8;
@@ -129,21 +136,19 @@ export default function UserLocationMarkerSvg({
           <AnimatedCircle
             cx={CENTER}
             cy={CENTER}
-            // r and opacity are animated
             r={glowRadius}
             fill={color}
             opacity={glowOpacity}
           />
 
-          {/* Outer ring - stroke width animated slightly */}
-          <Circle
+          {/* Animated outer ring - strokeWidth and opacity animated */}
+          <AnimatedCircle
             cx={CENTER}
             cy={CENTER}
             r={RING_BASE}
             stroke={color}
-            // strokeWidth can't accept Animated value directly in some RN/svg versions,
-            // so we render an Animated stroke via a wrapper if supported; otherwise keep static:
-            strokeWidth={RING_STROKE_BASE}
+            strokeWidth={ringStroke}
+            opacity={ringOpacity}
             fill="none"
           />
 
