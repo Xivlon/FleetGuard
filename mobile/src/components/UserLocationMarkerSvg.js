@@ -2,35 +2,23 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, View } from 'react-native';
 import Svg, { G, Circle, Path } from 'react-native-svg';
 
-// Create animated versions of SVG elements
 const AnimatedG = Animated.createAnimatedComponent(G);
 
 /**
  * UserLocationMarkerSvg
- *
- * - Rotates & pulses inside the SVG using an animated <G> so rotation pivot is exact.
- * - spin/pulse animations now run without pixel-pivot math; no more "orbiting" effect.
- *
- * Props:
- * - color: string (hex)
- * - size: number (px)
- * - spin: boolean -> rotate continuously when true
- * - spinDuration: number ms for one full rotation
- * - pulse: boolean -> pulse (scale) loop when true
- * - pulseDuration: number ms for one pulse cycle
+ * - Rotates & pulses the entire icon around its visual center (no orbiting).
+ * - Animations run with useNativeDriver: false because they animate SVG props.
  */
 export default function UserLocationMarkerSvg({
   color = '#10B981',
   size = 40,
-  spin = false,
-  spinDuration = 6000,
+  spin = true,
+  spinDuration = 3000,
   pulse = false,
   pulseDuration = 900,
 }) {
-  // Animated values (we can't use useNativeDriver for animating svg props)
-  const spinAnim = useRef(new Animated.Value(0)).current;   // 0..1 -> 0..360deg
-  const pulseAnim = useRef(new Animated.Value(0)).current;  // 0..1 -> scale
-
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(0)).current;
   const spinRef = useRef(null);
   const pulseRef = useRef(null);
 
@@ -42,7 +30,7 @@ export default function UserLocationMarkerSvg({
           toValue: 1,
           duration: spinDuration,
           easing: Easing.linear,
-          useNativeDriver: false, // animating svg props; native driver doesn't support them
+          useNativeDriver: false,
         }),
         { iterations: -1 }
       );
@@ -52,10 +40,8 @@ export default function UserLocationMarkerSvg({
         spinRef.current.stop();
         spinRef.current = null;
       }
-      // Reset to 0 (instant) or animate to 0 for a smooth stop
       spinAnim.setValue(0);
     }
-
     return () => {
       if (spinRef.current) {
         spinRef.current.stop();
@@ -92,7 +78,6 @@ export default function UserLocationMarkerSvg({
       }
       pulseAnim.setValue(0);
     }
-
     return () => {
       if (pulseRef.current) {
         pulseRef.current.stop();
@@ -101,20 +86,19 @@ export default function UserLocationMarkerSvg({
     };
   }, [pulse, pulseDuration, pulseAnim]);
 
-  // Interpolations for SVG props
+  // Interpolations
   const rotation = spinAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 360], // numeric degrees for SVG rotation prop
   });
-
   const scale = pulseAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 1.08],
   });
 
-  // SVG layout constants — keep conservative to avoid clipping
+  // SVG layout constants (kept conservative to avoid clipping)
   const VIEWBOX_SIZE = 100;
-  const CENTER = VIEWBOX_SIZE / 3; // tuned to avoid earlier clipping
+  const CENTER = VIEWBOX_SIZE / 3; // visual center chosen to avoid clipping earlier
   const MARGIN = 8;
   const MAX_RADIUS = CENTER - MARGIN;
   const ICON_SCALE = 2.8;
@@ -124,31 +108,22 @@ export default function UserLocationMarkerSvg({
   const RING_RADIUS = MAX_RADIUS * 0.75;
   const RING_STROKE_WIDTH = 3;
 
-  // Animated props for <G>:
-  // - rotation (degrees) around (CENTER, CENTER)
-  // - scale around the same origin
-  // AnimatedG accepts numeric rotation and scale props.
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
-        {/* Outer glow + ring are drawn as usual */}
-        <Circle cx={CENTER} cy={CENTER} r={GLOW_RADIUS} fill={`${color}33`} />
-        <Circle
-          cx={CENTER}
-          cy={CENTER}
-          r={RING_RADIUS}
-          stroke={color}
-          strokeWidth={RING_STROKE_WIDTH}
-          fill="none"
-        />
+        {/* Animated group contains the whole icon so the entire SVG rotates around CENTER */}
+        <AnimatedG rotation={rotation} originX={CENTER} originY={CENTER} scale={scale}>
+          {/* Glow and outer ring */}
+          <Circle cx={CENTER} cy={CENTER} r={GLOW_RADIUS} fill={`${color}33`} />
+          <Circle
+            cx={CENTER}
+            cy={CENTER}
+            r={RING_RADIUS}
+            stroke={color}
+            strokeWidth={RING_STROKE_WIDTH}
+            fill="none"
+          />
 
-        {/* Animated group: rotate & scale around the artwork center */}
-        <AnimatedG
-          rotation={rotation}
-          originX={CENTER}
-          originY={CENTER}
-          scale={scale}
-        >
           {/* Orbit arcs */}
           <Path
             d="M20.341 6.484A10 10 0 0 1 10.266 21.85"
@@ -169,7 +144,7 @@ export default function UserLocationMarkerSvg({
             transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
 
-          {/* Center circle and satellites */}
+          {/* Center circle */}
           <Circle
             cx="12"
             cy="12"
@@ -177,6 +152,8 @@ export default function UserLocationMarkerSvg({
             fill={color}
             transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
           />
+
+          {/* Satellites */}
           <Circle
             cx="19"
             cy="5"
