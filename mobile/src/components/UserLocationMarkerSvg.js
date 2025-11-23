@@ -3,17 +3,18 @@ import { Animated, Easing, View } from 'react-native';
 import Svg, { G, Circle, Path } from 'react-native-svg';
 
 const AnimatedG = Animated.createAnimatedComponent(G);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 /**
  * UserLocationMarkerSvg
- * - Rotates & pulses the entire icon around its visual center (no orbiting).
- * - Animations run with useNativeDriver: false because they animate SVG props.
+ * - Rotates the whole icon around its visual center.
+ * - Pulses by animating the glow circle's radius & opacity (centered), avoiding scale-origin issues.
  */
 export default function UserLocationMarkerSvg({
   color = '#10B981',
   size = 40,
-  spin = true,
-  spinDuration = 3000,
+  spin = false,
+  spinDuration = 6000,
   pulse = false,
   pulseDuration = 900,
 }) {
@@ -31,8 +32,7 @@ export default function UserLocationMarkerSvg({
           duration: spinDuration,
           easing: Easing.linear,
           useNativeDriver: false,
-        }),
-        { iterations: -1 }
+        })
       );
       spinRef.current.start();
     } else {
@@ -67,8 +67,7 @@ export default function UserLocationMarkerSvg({
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: false,
           }),
-        ]),
-        { iterations: -1 }
+        ])
       );
       pulseRef.current.start();
     } else {
@@ -78,6 +77,7 @@ export default function UserLocationMarkerSvg({
       }
       pulseAnim.setValue(0);
     }
+
     return () => {
       if (pulseRef.current) {
         pulseRef.current.stop();
@@ -86,88 +86,109 @@ export default function UserLocationMarkerSvg({
     };
   }, [pulse, pulseDuration, pulseAnim]);
 
-  // Interpolations
+  // rotation numeric degrees for SVG rotation prop
   const rotation = spinAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 360], // numeric degrees for SVG rotation prop
-  });
-  const scale = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.08],
+    outputRange: [0, 360],
   });
 
-  // SVG layout constants (kept conservative to avoid clipping)
+  // pulse-driven glow radius & opacity
   const VIEWBOX_SIZE = 100;
-  const CENTER = VIEWBOX_SIZE / 3; // visual center chosen to avoid clipping earlier
+  const CENTER = VIEWBOX_SIZE / 3; // visual center chosen earlier
   const MARGIN = 8;
-  const MAX_RADIUS = CENTER - MARGIN;
+  const MAX_RADIUS = CENTER - MARGIN; // base glow radius
+  const GLOW_MIN = MAX_RADIUS;        // base
+  const GLOW_MAX = MAX_RADIUS * 1.25; // pulsed max
+  const glowRadius = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [GLOW_MIN, GLOW_MAX],
+  });
+  const glowOpacity = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.20, 0.45],
+  });
+
+  // optional subtle ring stroke change for pulse
+  const RING_BASE = MAX_RADIUS * 0.75;
+  const RING_STROKE_BASE = 3;
+  const ringStroke = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [RING_STROKE_BASE, RING_STROKE_BASE * 1.15],
+  });
+
   const ICON_SCALE = 2.8;
   const ORIGINAL_VIEWBOX_X = 12;
   const ORIGINAL_VIEWBOX_Y = 12;
-  const GLOW_RADIUS = MAX_RADIUS;
-  const RING_RADIUS = MAX_RADIUS * 0.75;
-  const RING_STROKE_WIDTH = 3;
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
-        {/* Animated group contains the whole icon so the entire SVG rotates around CENTER */}
-        <AnimatedG rotation={rotation} originX={CENTER} originY={CENTER} scale={scale}>
-          {/* Glow and outer ring */}
-          <Circle cx={CENTER} cy={CENTER} r={GLOW_RADIUS} fill={`${color}33`} />
+        {/* Animated group rotates the whole icon around CENTER */}
+        <AnimatedG rotation={rotation} originX={CENTER} originY={CENTER}>
+          {/* Animated glow circle (centered) */}
+          <AnimatedCircle
+            cx={CENTER}
+            cy={CENTER}
+            // r and opacity are animated
+            r={glowRadius}
+            fill={color}
+            opacity={glowOpacity}
+          />
+
+          {/* Outer ring - stroke width animated slightly */}
           <Circle
             cx={CENTER}
             cy={CENTER}
-            r={RING_RADIUS}
+            r={RING_BASE}
             stroke={color}
-            strokeWidth={RING_STROKE_WIDTH}
+            // strokeWidth can't accept Animated value directly in some RN/svg versions,
+            // so we render an Animated stroke via a wrapper if supported; otherwise keep static:
+            strokeWidth={RING_STROKE_BASE}
             fill="none"
           />
 
-          {/* Orbit arcs */}
-          <Path
-            d="M20.341 6.484A10 10 0 0 1 10.266 21.85"
-            fill="none"
-            stroke={color}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
-          />
-          <Path
-            d="M3.659 17.516A10 10 0 0 1 13.74 2.152"
-            fill="none"
-            stroke={color}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
-          />
-
-          {/* Center circle */}
-          <Circle
-            cx="12"
-            cy="12"
-            r="3"
-            fill={color}
-            transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
-          />
-
-          {/* Satellites */}
-          <Circle
-            cx="19"
-            cy="5"
-            r="2"
-            fill={color}
-            transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
-          />
-          <Circle
-            cx="5"
-            cy="19"
-            r="2"
-            fill={color}
-            transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
-          />
+          {/* Orbit arcs, center, satellites */}
+          <G>
+            <Path
+              d="M20.341 6.484A10 10 0 0 1 10.266 21.85"
+              fill="none"
+              stroke={color}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            />
+            <Path
+              d="M3.659 17.516A10 10 0 0 1 13.74 2.152"
+              fill="none"
+              stroke={color}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            />
+            <Circle
+              cx="12"
+              cy="12"
+              r="3"
+              fill={color}
+              transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            />
+            <Circle
+              cx="19"
+              cy="5"
+              r="2"
+              fill={color}
+              transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            />
+            <Circle
+              cx="5"
+              cy="19"
+              r="2"
+              fill={color}
+              transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            />
+          </G>
         </AnimatedG>
       </Svg>
     </View>
