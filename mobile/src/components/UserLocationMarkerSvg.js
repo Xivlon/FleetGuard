@@ -7,19 +7,17 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 /**
  * UserLocationMarkerSvg
- *
- * - `size` is the visible marker box size you want on the map (e.g. 50).
- * - The component renders a larger internal SVG (svgSize) so the glow can bleed out.
- * - Use it with Marker and set Marker tracksViewChanges={true} while animating.
+ * - Rotates the whole icon around its visual center.
+ * - Pulses by animating the glow circle's radius & opacity (centered).
+ * - The ring now pulses (strokeWidth + opacity) in sync with the glow.
  */
 export default function UserLocationMarkerSvg({
   color = '#10B981',
-  size = 50,          // nominal visible marker square
+  size = 40,
   spin = false,
   spinDuration = 6000,
   pulse = false,
   pulseDuration = 900,
-  bleed = 0.6,        // fraction of `size` to extend the svg beyond the marker box
 }) {
   const spinAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(0)).current;
@@ -34,7 +32,7 @@ export default function UserLocationMarkerSvg({
           toValue: 1,
           duration: spinDuration,
           easing: Easing.linear,
-          useNativeDriver: false, // svg props require false
+          useNativeDriver: false,
         })
       );
       spinRef.current.start();
@@ -80,6 +78,7 @@ export default function UserLocationMarkerSvg({
       }
       pulseAnim.setValue(0);
     }
+
     return () => {
       if (pulseRef.current) {
         pulseRef.current.stop();
@@ -88,68 +87,52 @@ export default function UserLocationMarkerSvg({
     };
   }, [pulse, pulseDuration, pulseAnim]);
 
-  // Interpolations
-  const rotation = spinAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 360] });
-  const pulseRatio = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  // rotation numeric degrees for SVG rotation prop
+  const rotation = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 360],
+  });
 
-  // SVG layout constants (viewBox units)
+  // pulse-driven glow radius & opacity
   const VIEWBOX_SIZE = 100;
-  const CENTER = VIEWBOX_SIZE / 3; // visual center tuned earlier
-  const MARGIN = 6;
-  const MAX_RADIUS = CENTER - MARGIN;
+  const CENTER = VIEWBOX_SIZE / 3; // visual center chosen earlier
+  const MARGIN = 8;
+  const MAX_RADIUS = CENTER - MARGIN; // base glow radius
 
-  // Glow radius & opacity
   const GLOW_MIN = MAX_RADIUS;
-  const GLOW_MAX = MAX_RADIUS * 1.6;
-  const glowRadius = pulseRatio.interpolate
-    ? pulseRatio.interpolate({ inputRange: [0, 1], outputRange: [GLOW_MIN, GLOW_MAX] })
-    : pulseRatio; // fallback if interp not available
-  const glowOpacity = pulseRatio.interpolate
-    ? pulseRatio.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.5] })
-    : pulseRatio;
+  const GLOW_MAX = MAX_RADIUS * 1.25;
+  const glowRadius = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [GLOW_MIN, GLOW_MAX],
+  });
+  const glowOpacity = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.20, 0.45],
+  });
 
-  // Simulated ring pulse by animating a faint outer ring's opacity + inner ring opacity, avoiding animating strokeWidth directly
+  // ring base and animated stroke/opacity
   const RING_BASE = MAX_RADIUS * 0.75;
-  const innerRingOpacity = pulseRatio.interpolate
-    ? pulseRatio.interpolate({ inputRange: [0, 1], outputRange: [1.0, 0.9] })
-    : pulseRatio;
-  const outerRingOpacity = pulseRatio.interpolate
-    ? pulseRatio.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] })
-    : pulseRatio;
-  const outerRingRadius = pulseRatio.interpolate
-    ? pulseRatio.interpolate({ inputRange: [0, 1], outputRange: [RING_BASE + 0.5, RING_BASE + 4] })
-    : RING_BASE;
+  const RING_STROKE_BASE = 3;
+  const RING_STROKE_MAX = RING_STROKE_BASE * 1.5;
+  const ringStroke = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [RING_STROKE_BASE, RING_STROKE_MAX],
+  });
+  const ringOpacity = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.95, 1],
+  });
 
   const ICON_SCALE = 2.8;
   const ORIGINAL_VIEWBOX_X = 12;
   const ORIGINAL_VIEWBOX_Y = 12;
 
-  // make the svg bigger so glow can bleed out
-  const svgExtra = size * bleed;
-  const svgSize = size + svgExtra;
-
   return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'visible', // let children draw outside
-      }}
-    >
-      <Svg
-        width={svgSize}
-        height={svgSize}
-        viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
-        style={{
-          position: 'absolute',
-          left: -(svgExtra / 2),
-          top: -(svgExtra / 2),
-        }}
-      >
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
+        {/* Animated group rotates the whole icon around CENTER */}
         <AnimatedG rotation={rotation} originX={CENTER} originY={CENTER}>
-          {/* Animated glow */}
+          {/* Animated glow circle (centered) */}
           <AnimatedCircle
             cx={CENTER}
             cy={CENTER}
@@ -158,18 +141,61 @@ export default function UserLocationMarkerSvg({
             opacity={glowOpacity}
           />
 
-          {/* inner ring (stable) */}
-          <Circle cx={CENTER} cy={CENTER} r={RING_BASE} stroke={color} strokeWidth={3} fill="none" opacity={innerRingOpacity} />
-
-          {/* outer ring (fades in/out to simulate stroke growth outward) */}
+          {/* Animated outer ring - strokeWidth and opacity animated */}
           <AnimatedCircle
             cx={CENTER}
             cy={CENTER}
-            r={outerRingRadius}
+            r={RING_BASE}
             stroke={color}
-            strokeWidth={1.8}
+            strokeWidth={ringStroke}
+            opacity={ringOpacity}
             fill="none"
-            opacity={outerRingOpacity}
           />
 
-          {/* artwork
+          {/* Orbit arcs, center, satellites */}
+          <G>
+            <Path
+              d="M20.341 6.484A10 10 0 0 1 10.266 21.85"
+              fill="none"
+              stroke={color}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            />
+            <Path
+              d="M3.659 17.516A10 10 0 0 1 13.74 2.152"
+              fill="none"
+              stroke={color}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            />
+            <Circle
+              cx="12"
+              cy="12"
+              r="3"
+              fill={color}
+              transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            />
+            <Circle
+              cx="19"
+              cy="5"
+              r="2"
+              fill={color}
+              transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            />
+            <Circle
+              cx="5"
+              cy="19"
+              r="2"
+              fill={color}
+              transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            />
+          </G>
+        </AnimatedG>
+      </Svg>
+    </View>
+  );
+}
