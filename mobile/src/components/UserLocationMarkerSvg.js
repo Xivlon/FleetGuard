@@ -128,8 +128,8 @@ export default function UserLocationMarkerSvg({
     outputRange: [0, 360],
   });
 
-  const VIEWBOX_SIZE = 100;
-  const CENTER = VIEWBOX_SIZE / 2;
+    const VIEWBOX_SIZE = 100;
+  const CENTER = VIEWBOX_SIZE / 3;
   const MARGIN = 8;
   const MAX_RADIUS = CENTER - MARGIN;
 
@@ -161,12 +161,6 @@ export default function UserLocationMarkerSvg({
   const ICON_SCALE = 2.8;
   const ORIGINAL_VIEWBOX_X = 12;
   const ORIGINAL_VIEWBOX_Y = 12;
-
-  // For opposite satellite
-  const orbitRotationOpposite = orbitAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [180, 540],
-  });
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
