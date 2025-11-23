@@ -124,10 +124,6 @@ export default function UserLocationMarkerSvg({
   }, [orbit, orbitDuration, orbitAnim]);
 
   // Interpolations
-  const rotation = spinAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 360],
-  });
   const orbitRotation = orbitAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 360],
