@@ -848,7 +848,7 @@ export default function NavigationScreen({ navigation }) {
             <UserLocationMarkerSvg
               color={COLORS.userLocation}
               size={50}
-              spin={isLocked}           // spin only when we have a stable lock
+              orbit={isLocked}          // spin only when we have a stable lock
               spinDuration={6000}       // slower rotation
               pulse={isLockingOntoLocation} // pulse only while searching
               pulseDuration={900}
