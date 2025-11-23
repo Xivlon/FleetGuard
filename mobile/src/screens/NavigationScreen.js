@@ -1,3 +1,4 @@
+// mobile/src/screens/navigation-screen3.js
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -77,15 +78,128 @@ export default function NavigationScreen({ navigation }) {
   const mapRef = useRef(null);
   const lastPositionRef = useRef(null);
   const initialCameraSetRef = useRef(false);
-  // isLockingOntoLocation: true while we're trying to get a fix (searching)
+
+  // --- Location lock state (hysteresis) ---
+  const [lockState, setLockState] = useState({
+    isLocked: false,
+    consecutiveGood: 0,
+    consecutiveBad: 0,
+    lastGoodAt: null,
+  });
+
+  // Lock tuning constants (tweak if needed)
+  const LOCK_GOOD_THRESHOLD_METERS = 50;    // <= this is counted as "good"
+  const LOCK_GOOD_REQUIRED = 3;             // consecutive good samples to lock
+  const LOCK_BAD_THRESHOLD_METERS = 120;    // >= this is counted as "bad"
+  const LOCK_BAD_REQUIRED = 2;              // consecutive bad samples to unlock
+  const LOCK_RECENT_WINDOW_MS = 10_000;     // sample freshness window
+
+  // Helper: normalize accuracy regardless of provider shape
+  const getAccuracy = (loc) => {
+    if (!loc) return Infinity;
+    const coordsAccuracy = loc.coords && typeof loc.coords.accuracy === 'number' ? loc.coords.accuracy : undefined;
+    const topAccuracy = typeof loc.accuracy === 'number' ? loc.accuracy : undefined;
+    return typeof coordsAccuracy === 'number' ? coordsAccuracy : (typeof topAccuracy === 'number' ? topAccuracy : Infinity);
+  };
+
+  // Decide canonical effectiveLocation so UI uses one source
+  const effectiveLocation = currentLocation || userLocation;
+
+  // Debug logs to help diagnose location behavior (remove in production)
+  useEffect(() => {
+    console.log('[NavigationScreen] permissionStatus:', permissionStatus);
+    console.log('[NavigationScreen] currentLocation:', currentLocation);
+    console.log('[NavigationScreen] userLocation:', userLocation);
+    console.log('[NavigationScreen] effectiveLocation:', effectiveLocation);
+  }, [permissionStatus, currentLocation, userLocation]);
+
+  // Update lockState based on incoming effectiveLocation changes
+  useEffect(() => {
+    if (!effectiveLocation) {
+      // No location yet
+      setLockState({ isLocked: false, consecutiveGood: 0, consecutiveBad: 0, lastGoodAt: null });
+      return;
+    }
+
+    const accuracy = getAccuracy(effectiveLocation);
+    // If the location provider supplies timestamp (ms or ISO), normalize it; otherwise use now
+    let timestampMs = Date.now();
+    if (effectiveLocation.timestamp) {
+      const t = effectiveLocation.timestamp;
+      timestampMs = typeof t === 'number' ? t : new Date(t).getTime();
+    }
+
+    console.log(`[Lock] accuracy=${accuracy}ms timestamp=${timestampMs}`);
+
+    const now = Date.now();
+    if (now - timestampMs > LOCK_RECENT_WINDOW_MS * 2) {
+      // Stale reading => treat as a bad sample
+      setLockState(prev => {
+        const consecutiveBad = prev.consecutiveBad + 1;
+        const shouldUnlock = consecutiveBad >= LOCK_BAD_REQUIRED;
+        return {
+          isLocked: shouldUnlock ? false : prev.isLocked,
+          consecutiveGood: 0,
+          consecutiveBad,
+          lastGoodAt: prev.lastGoodAt,
+        };
+      });
+      return;
+    }
+
+    if (accuracy <= LOCK_GOOD_THRESHOLD_METERS) {
+      // Good reading
+      setLockState(prev => {
+        const consecutiveGood = prev.consecutiveGood + 1;
+        const isLocked = consecutiveGood >= LOCK_GOOD_REQUIRED;
+        return {
+          isLocked,
+          consecutiveGood,
+          consecutiveBad: 0,
+          lastGoodAt: Date.now(),
+        };
+      });
+      return;
+    }
+
+    if (accuracy >= LOCK_BAD_THRESHOLD_METERS) {
+      // Bad reading
+      setLockState(prev => {
+        const consecutiveBad = prev.consecutiveBad + 1;
+        const isLocked = consecutiveBad >= LOCK_BAD_REQUIRED ? false : prev.isLocked;
+        return {
+          isLocked,
+          consecutiveGood: 0,
+          consecutiveBad,
+          lastGoodAt: prev.lastGoodAt,
+        };
+      });
+      return;
+    }
+
+    // Intermediate accuracy - gently decay counts so we don't flip too eagerly
+    setLockState(prev => {
+      const consecutiveGood = Math.max(0, prev.consecutiveGood - 1);
+      const consecutiveBad = Math.max(0, prev.consecutiveBad - 1);
+      return {
+        isLocked: prev.isLocked,
+        consecutiveGood,
+        consecutiveBad,
+        lastGoodAt: prev.lastGoodAt,
+      };
+    });
+  }, [effectiveLocation]); // run when effectiveLocation changes
+
+  // Derive booleans used by UI (pulse/spin)
   const isLockingOntoLocation = (
-  permissionStatus === 'checking' ||
-  (permissionStatus === 'granted' && !currentLocation) ||
-  (currentLocation && currentLocation.accuracy && currentLocation.accuracy > 100) // tune threshold
-   );   
-  // isLocked: stable/healthy fix (we'll spin when locked)
-  const isLocked = !isLockingOntoLocation && currentLocation != null && (currentLocation.accuracy === undefined || currentLocation.accuracy <= 100);
-        
+    permissionStatus === 'checking' ||
+    (permissionStatus === 'granted' && !effectiveLocation) ||
+    !lockState.isLocked
+  );
+
+  const isLocked = lockState.isLocked;
+
+  // --- End lock state code ---
 
   useEffect(() => {
     if (routes[vehicleId]) {
@@ -131,12 +245,16 @@ export default function NavigationScreen({ navigation }) {
           const currentPosition = {
             latitude: coords?.latitude || latitude,
             longitude: coords?.longitude || longitude,
+            // forward accuracy/timestamp when available
+            accuracy: coords?.accuracy ?? location.accuracy,
+            coords: coords ?? undefined,
+            timestamp: location.timestamp ?? Date.now(),
           };
 
           console.log('[NavigationScreen] Location updated:', {
             lat: currentPosition.latitude.toFixed(6),
             lon: currentPosition.longitude.toFixed(6),
-            accuracy: coords?.accuracy?.toFixed(2),
+            accuracy: currentPosition.coords?.accuracy?.toFixed ? currentPosition.coords.accuracy.toFixed(2) : currentPosition.accuracy,
           });
 
           setUserLocation(currentPosition);
@@ -465,12 +583,12 @@ export default function NavigationScreen({ navigation }) {
 
   // Check for danger waypoint proximity and alert
   useEffect(() => {
-    if (!userLocation || !waypoints) return;
+    if (!effectiveLocation || !waypoints) return;
 
     const dangerWaypoints = waypoints.filter(w => w.type === 'danger');
 
     dangerWaypoints.forEach(waypoint => {
-      const distance = calculateDistance(userLocation, waypoint.location);
+      const distance = calculateDistance(normalizeCoord(effectiveLocation), waypoint.location);
       const radius = waypoint.notificationRadius || 500;
       const resetRadius = radius * 2;
 
@@ -493,7 +611,7 @@ export default function NavigationScreen({ navigation }) {
         });
       }
     });
-  }, [userLocation, waypoints]);
+  }, [effectiveLocation, waypoints, dangerAlertShown]);
 
   const routeHazards = route ? checkHazardsOnRoute() : [];
   const routeObstaclesOnPath = route ? checkObstaclesOnRoute() : [];
@@ -525,8 +643,8 @@ export default function NavigationScreen({ navigation }) {
             <Text style={styles.locationStatusText}>
               📍 Location: {
                 permissionStatus === 'checking' ? 'Checking...' :
-                permissionStatus === 'granted' && currentLocation ? 'Active' :
-                permissionStatus === 'granted' && !currentLocation ? 'Searching...' :
+                permissionStatus === 'granted' && effectiveLocation ? 'Active' :
+                permissionStatus === 'granted' && !effectiveLocation ? 'Searching...' :
                 permissionStatus === 'denied' ? 'Denied' :
                 'Unavailable'
               }
@@ -640,7 +758,7 @@ export default function NavigationScreen({ navigation }) {
           ref={mapRef}
           provider={PROVIDER_DEFAULT}
           style={styles.map}
-          initialRegion={currentLocation || mapRegion}
+          initialRegion={effectiveLocation || mapRegion}
           customMapStyle={darkMapStyle}
           onLongPress={handleMapLongPress}
         >
@@ -721,8 +839,12 @@ export default function NavigationScreen({ navigation }) {
               );
             }}
           />
-        {userLocation && (
-          <Marker coordinate={userLocation} anchor={{ x: 0.5, y: 0.5 }}>
+        {effectiveLocation && (
+          <Marker
+            coordinate={normalizeCoord(effectiveLocation)}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={isLockingOntoLocation || !isLocked}
+          >
             <UserLocationMarkerSvg
               color={COLORS.userLocation}
               size={50}
