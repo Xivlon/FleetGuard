@@ -9,19 +9,12 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
  * UserLocationMarkerSvg
  *
  * Props:
- * - color: hex
- * - size: px
- * - spin: boolean (whole-icon rotate)
- * - spinDuration: ms
- * - pulse: boolean (glow pulse)
- * - pulseDuration: ms
- * - orbit: boolean (orbit arcs & satellites)
- * - orbitDuration: ms
+ * - color, size
+ * - spin (whole-icon rotation)
+ * - pulse (glow)
+ * - orbit (orbit arcs & satellites only)
  *
- * Improvements:
- * - Logs prop changes (temporary, remove in prod)
- * - Smoothly animates pulse to 0 when stopping
- * - Stops loops reliably and resets values
+ * Key fix: CENTER is now VIEWBOX_SIZE / 2 so orbit pivots around the true center.
  */
 export default function UserLocationMarkerSvg({
   color = '#10B981',
@@ -33,38 +26,16 @@ export default function UserLocationMarkerSvg({
   orbit = false,
   orbitDuration = 3000,
 }) {
-  // Animated values
   const spinAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const orbitAnim = useRef(new Animated.Value(0)).current;
 
-  // Refs to keep loop instances so we can stop them
   const spinRef = useRef(null);
   const pulseRef = useRef(null);
   const orbitRef = useRef(null);
 
-  // Debug: show incoming props so we can verify state
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('[UserLocationMarkerSvg] props', { spin, pulse, orbit, spinDuration, pulseDuration, orbitDuration });
-  }, [spin, pulse, orbit, spinDuration, pulseDuration, orbitDuration]);
-
-  // Helper to smoothly stop an animation value to 0
-  const smoothReset = (anim, duration = 250) => {
-    return new Promise(resolve => {
-      Animated.timing(anim, {
-        toValue: 0,
-        duration,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: false,
-      }).start(() => resolve());
-    });
-  };
-
-  // Spin (whole icon)
   useEffect(() => {
     if (spin) {
-      // start spinning
       spinAnim.setValue(0);
       spinRef.current = Animated.loop(
         Animated.timing(spinAnim, {
@@ -76,22 +47,20 @@ export default function UserLocationMarkerSvg({
       );
       spinRef.current.start();
     } else {
-      // stop loop then smooth-reset to 0 for consistent visual
       if (spinRef.current) {
-        try { spinRef.current.stop(); } catch (e) {}
+        spinRef.current.stop();
         spinRef.current = null;
       }
-      smoothReset(spinAnim, 240);
+      spinAnim.setValue(0);
     }
     return () => {
       if (spinRef.current) {
-        try { spinRef.current.stop(); } catch (e) {}
+        spinRef.current.stop();
         spinRef.current = null;
       }
     };
   }, [spin, spinDuration, spinAnim]);
 
-  // Pulse (glow)
   useEffect(() => {
     if (pulse) {
       pulseAnim.setValue(0);
@@ -113,23 +82,21 @@ export default function UserLocationMarkerSvg({
       );
       pulseRef.current.start();
     } else {
-      // stop loop, then fade out the glow smoothly
       if (pulseRef.current) {
-        try { pulseRef.current.stop(); } catch (e) {}
+        pulseRef.current.stop();
         pulseRef.current = null;
       }
-      smoothReset(pulseAnim, 260);
+      // smoothly reset to 0
+      Animated.timing(pulseAnim, { toValue: 0, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: false }).start();
     }
-
     return () => {
       if (pulseRef.current) {
-        try { pulseRef.current.stop(); } catch (e) {}
+        pulseRef.current.stop();
         pulseRef.current = null;
       }
     };
   }, [pulse, pulseDuration, pulseAnim]);
 
-  // Orbit (orbits arcs + satellites only)
   useEffect(() => {
     if (orbit) {
       orbitAnim.setValue(0);
@@ -144,59 +111,37 @@ export default function UserLocationMarkerSvg({
       orbitRef.current.start();
     } else {
       if (orbitRef.current) {
-        try { orbitRef.current.stop(); } catch (e) {}
+        orbitRef.current.stop();
         orbitRef.current = null;
       }
-      smoothReset(orbitAnim, 240);
+      Animated.timing(orbitAnim, { toValue: 0, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: false }).start();
     }
-
     return () => {
       if (orbitRef.current) {
-        try { orbitRef.current.stop(); } catch (e) {}
+        orbitRef.current.stop();
         orbitRef.current = null;
       }
     };
   }, [orbit, orbitDuration, orbitAnim]);
 
-  // Interpolations
-  const rotation = spinAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 360],
-  });
-  const orbitRotation = orbitAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 360],
-  });
+  const rotation = spinAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 360] });
+  const orbitRotation = orbitAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 360] });
 
   const VIEWBOX_SIZE = 100;
-  const CENTER = VIEWBOX_SIZE / 3;
+  const CENTER = VIEWBOX_SIZE / 2; // <- use true center (was VIEWBOX_SIZE / 3 earlier)
   const MARGIN = 8;
   const MAX_RADIUS = CENTER - MARGIN;
 
+  // Pulse-driven glow & ring
   const GLOW_MIN = MAX_RADIUS;
   const GLOW_MAX = MAX_RADIUS * 1.25;
-  const glowRadius = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [GLOW_MIN, GLOW_MAX],
-  });
-  const glowOpacity = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.18, 0.45],
-  });
+  const glowRadius = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [GLOW_MIN, GLOW_MAX] });
+  const glowOpacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.45] });
 
   const RING_BASE = MAX_RADIUS * 0.75;
-  const INNER_RING_OPACITY = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.95],
-  });
-  const OUTER_RING_RADIUS = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [RING_BASE + 0.5, RING_BASE + 3.5],
-  });
-  const OUTER_RING_OPACITY = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.5],
-  });
+  const INNER_RING_OPACITY = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.95] });
+  const OUTER_RING_RADIUS = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [RING_BASE + 0.5, RING_BASE + 3.5] });
+  const OUTER_RING_OPACITY = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.5] });
 
   const ICON_SCALE = 2.8;
   const ORIGINAL_VIEWBOX_X = 12;
@@ -205,23 +150,27 @@ export default function UserLocationMarkerSvg({
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
+        {/* Whole icon rotation around CENTER */}
         <AnimatedG rotation={rotation} originX={CENTER} originY={CENTER}>
+          {/* Glow */}
           <AnimatedCircle cx={CENTER} cy={CENTER} r={glowRadius} fill={color} opacity={glowOpacity} />
 
+          {/* Rings */}
           <Circle cx={CENTER} cy={CENTER} r={RING_BASE} stroke={color} strokeWidth={3} fill="none" opacity={INNER_RING_OPACITY} />
-
           <AnimatedCircle cx={CENTER} cy={CENTER} r={OUTER_RING_RADIUS} stroke={color} strokeWidth={1.6} fill="none" opacity={OUTER_RING_OPACITY} />
 
-          {/* central circle */}
-          <Circle
-            cx="12"
-            cy="12"
-            r="3"
-            fill={color}
-            transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
-          />
+          {/* Central artwork (centered by transform so its visual center aligns with CENTER) */}
+          <G>
+            <Circle
+              cx="12"
+              cy="12"
+              r="3"
+              fill={color}
+              transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
+            />
+          </G>
 
-          {/* orbit group (rotates only when orbit=true) */}
+          {/* Orbit group: rotates around CENTER (true center) */}
           <AnimatedG rotation={orbitRotation} originX={CENTER} originY={CENTER}>
             <Path
               d="M20.341 6.484A10 10 0 0 1 10.266 21.85"
@@ -241,7 +190,6 @@ export default function UserLocationMarkerSvg({
               strokeLinejoin="round"
               transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
             />
-
             <Circle
               cx="19"
               cy="5"
