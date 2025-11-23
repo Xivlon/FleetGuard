@@ -6,19 +6,17 @@ const AnimatedG = Animated.createAnimatedComponent(G);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 /**
- * UserLocationMarkerSvg
+ * UserLocationMarkerSvg (spin removed)
  *
  * Props:
  * - color: hex
  * - size: px
- * - spin: boolean (whole-icon rotate)
- * - spinDuration: ms
  * - pulse: boolean (glow pulse)
  * - pulseDuration: ms
  * - orbit: boolean (orbit arcs & satellites)
  * - orbitDuration: ms
  *
- * Improvements:
+ * Improvements kept:
  * - Logs prop changes (temporary, remove in prod)
  * - Smoothly animates pulse to 0 when stopping
  * - Stops loops reliably and resets values
@@ -26,28 +24,24 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 export default function UserLocationMarkerSvg({
   color = '#10B981',
   size = 40,
-  spin = false,
-  spinDuration = 6000,
   pulse = false,
   pulseDuration = 900,
   orbit = false,
   orbitDuration = 3000,
 }) {
   // Animated values
-  const spinAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const orbitAnim = useRef(new Animated.Value(0)).current;
 
   // Refs to keep loop instances so we can stop them
-  const spinRef = useRef(null);
   const pulseRef = useRef(null);
   const orbitRef = useRef(null);
 
   // Debug: show incoming props so we can verify state
   useEffect(() => {
     // eslint-disable-next-line no-console
-    console.log('[UserLocationMarkerSvg] props', { spin, pulse, orbit, spinDuration, pulseDuration, orbitDuration });
-  }, [spin, pulse, orbit, spinDuration, pulseDuration, orbitDuration]);
+    console.log('[UserLocationMarkerSvg] props', { pulse, orbit, pulseDuration, orbitDuration });
+  }, [pulse, orbit, pulseDuration, orbitDuration]);
 
   // Helper to smoothly stop an animation value to 0
   const smoothReset = (anim, duration = 250) => {
@@ -60,36 +54,6 @@ export default function UserLocationMarkerSvg({
       }).start(() => resolve());
     });
   };
-
-  // Spin (whole icon)
-  useEffect(() => {
-    if (spin) {
-      // start spinning
-      spinAnim.setValue(0);
-      spinRef.current = Animated.loop(
-        Animated.timing(spinAnim, {
-          toValue: 1,
-          duration: spinDuration,
-          easing: Easing.linear,
-          useNativeDriver: false,
-        })
-      );
-      spinRef.current.start();
-    } else {
-      // stop loop then smooth-reset to 0 for consistent visual
-      if (spinRef.current) {
-        try { spinRef.current.stop(); } catch (e) {}
-        spinRef.current = null;
-      }
-      smoothReset(spinAnim, 240);
-    }
-    return () => {
-      if (spinRef.current) {
-        try { spinRef.current.stop(); } catch (e) {}
-        spinRef.current = null;
-      }
-    };
-  }, [spin, spinDuration, spinAnim]);
 
   // Pulse (glow)
   useEffect(() => {
@@ -159,17 +123,13 @@ export default function UserLocationMarkerSvg({
   }, [orbit, orbitDuration, orbitAnim]);
 
   // Interpolations
-  const rotation = spinAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 360],
-  });
   const orbitRotation = orbitAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 360],
   });
 
   const VIEWBOX_SIZE = 100;
-  const CENTER = VIEWBOX_SIZE / 3;
+  const CENTER = VIEWBOX_SIZE / 2;
   const MARGIN = 8;
   const MAX_RADIUS = CENTER - MARGIN;
 
@@ -202,10 +162,17 @@ export default function UserLocationMarkerSvg({
   const ORIGINAL_VIEWBOX_X = 12;
   const ORIGINAL_VIEWBOX_Y = 12;
 
+  // For opposite satellite
+  const orbitRotationOpposite = orbitAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [180, 540],
+  });
+
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
-        <AnimatedG rotation={rotation} originX={CENTER} originY={CENTER}>
+        {/* No whole-icon spin; only pulse and orbit remain */}
+        <AnimatedG originX={CENTER} originY={CENTER}>
           <AnimatedCircle cx={CENTER} cy={CENTER} r={glowRadius} fill={color} opacity={glowOpacity} />
 
           <Circle cx={CENTER} cy={CENTER} r={RING_BASE} stroke={color} strokeWidth={3} fill="none" opacity={INNER_RING_OPACITY} />
@@ -249,6 +216,10 @@ export default function UserLocationMarkerSvg({
               fill={color}
               transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
             />
+          </AnimatedG>
+
+          {/* opposite satellite, phase-shifted */}
+          <AnimatedG rotation={orbitRotationOpposite} originX={CENTER} originY={CENTER}>
             <Circle
               cx="5"
               cy="19"
