@@ -216,7 +216,6 @@ export default function UserLocationMarkerSvg({
               transform={`translate(${CENTER}, ${CENTER}) scale(${ICON_SCALE}) translate(-${ORIGINAL_VIEWBOX_X}, -${ORIGINAL_VIEWBOX_Y})`}
             />
           </AnimatedG>
-        </AnimatedG>
       </Svg>
     </View>
   );
